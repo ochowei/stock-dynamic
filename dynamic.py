@@ -212,6 +212,11 @@ if __name__ == "__main__":
         default="5d", # 預設值
         help="指定 yfinance 下載資料的週期 (例如: '5d', '7d', '1mo')"
     )
+    parser.add_argument(
+        "--plot-on-profit",
+        action="store_true",
+        help="僅在價值期望值 (Expected Return) > 0 時才儲存圖表。"
+    )
     # (未來也可以在這裡新增 --tickers 或 --hours 參數)
     args = parser.parse_args()
 
@@ -295,7 +300,8 @@ if __name__ == "__main__":
             )
             if analysis_results_1 and not detailed_df_1.empty:
                 print_results(analysis_results_1)
-                plot_results(analysis_results_1, detailed_df_1)
+                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_1['expected_return'] > 0):
+                    plot_results(analysis_results_1, detailed_df_1)
         else:
              print(f"--- {TICKER_SYMBOL} 缺少 {INTERVAL_1M} 資料，跳過分析 1 ---")
 
@@ -311,7 +317,8 @@ if __name__ == "__main__":
             )
             if analysis_results_2 and not detailed_df_2.empty:
                 print_results(analysis_results_2)
-                plot_results(analysis_results_2, detailed_df_2)
+                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_2['expected_return'] > 0):
+                    plot_results(analysis_results_2, detailed_df_2)
 
             # --- 執行分析 3 (Run Analysis 3) ---
             print(f"\n--- 分析 3 ({INTERVAL_60M} K線, {HOLDING_HOURS * 4} 小時) ---")
@@ -323,7 +330,8 @@ if __name__ == "__main__":
             )
             if analysis_results_3 and not detailed_df_3.empty:
                 print_results(analysis_results_3)
-                plot_results(analysis_results_3, detailed_df_3)
+                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_3['expected_return'] > 0):
+                    plot_results(analysis_results_3, detailed_df_3)
         else:
             print(f"--- {TICKER_SYMBOL} 缺少 {INTERVAL_60M} 資料，跳過分析 2 & 3 ---")
 
