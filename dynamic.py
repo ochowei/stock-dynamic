@@ -17,6 +17,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import re
+import argparse
 
 # @title
 #儲存格3
@@ -192,7 +193,6 @@ TICKER_SYMBOLS = ['ADBE','ALAB','AMD','BE','BND','CIFR','EOSE','FIG','GLD','GOOG
 
 # 分析 1 參數
 INTERVAL_1M = '1m'
-PERIOD_1M = '5d' # 兩個分析共用 '5d'
 
 # 分析 2 & 3 參數
 INTERVAL_60M = '60m'
@@ -202,30 +202,44 @@ INTERVAL_60M = '60m'
 # --- 執行主程式 (Run Main Program) ---
 if __name__ == "__main__":
 
+    # --- 1. 設定命令列參數解析 ---
+    parser = argparse.ArgumentParser(
+        description="執行 stock-dynamic 分析，可自訂分析週期。"
+    )
+    parser.add_argument(
+        "-p", "--period",
+        type=str,
+        default="5d", # 預設值
+        help="指定 yfinance 下載資料的週期 (例如: '5d', '7d', '1mo')"
+    )
+    # (未來也可以在這裡新增 --tickers 或 --hours 參數)
+    args = parser.parse_args()
+
+
     print("=======================================================")
     print(f"======= 開始批次下載資料 (Starting Batch Download) =======")
     print(f"Tickers: {TICKER_SYMBOLS}")
     print(f"Intervals: {INTERVAL_1M}, {INTERVAL_60M}")
-    print(f"Period: {PERIOD_1M}")
+    print(f"Period: {args.period}") # <-- 使用 args.period
     print("=======================================================\n")
 
-    # --- 1. 批次下載所有資料 ---
+    # --- 2. 批次下載所有資料 ---
     data_1m_batch = yf.download(
         tickers=TICKER_SYMBOLS,
         interval=INTERVAL_1M,
-        period=PERIOD_1M,
+        period=args.period, # <-- 使用 args.period
         progress=True,
         prepost=False,
-        group_by='ticker' # 使用 group_by='ticker'
+        group_by='ticker'
     )
 
     data_60m_batch = yf.download(
         tickers=TICKER_SYMBOLS,
         interval=INTERVAL_60M,
-        period=PERIOD_1M, # 兩個分析都使用 5d 週期
+        period=args.period, # <-- 使用 args.period
         progress=True,
         prepost=False,
-        group_by='ticker' # 使用 group_by='ticker'
+        group_by='ticker'
     )
 
     # --- 2. 統一處理時區 (在迴圈外處理) ---
