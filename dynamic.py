@@ -22,69 +22,20 @@ import re
 #儲存格3
 import pytz # 引入 pytz 函式庫
 
-def analyze_fixed_time_lag(ticker: str, interval: str, holding_hours: float,
-                           period: str = None, start_date: str = None, end_date: str = None):
+def analyze_fixed_time_lag(stock_data: pd.DataFrame, ticker: str, interval: str, holding_hours: float):
     """
-    分析一檔股票，在 "指定時間區間" 內，與 {holding_hours} 小時前的 K 線收盤價的價差。
-    Analyzes the price difference of a stock within a "specified time frame",
+    分析一檔股票在給定數據下，與 {holding_hours} 小時前的 K 線收盤價的價差。
+    Analyzes the price difference of a stock based on provided data,
     between the current bar and the close price {holding_hours} hours prior.
     """
-
-    print(f"正在下載 {ticker} 的 {interval} K線數據...")
-
-    # --- 修改點：靈活處理 'period' 或 'start/end' ---
-    download_params = {
-        "tickers": ticker,
-        "interval": interval,
-        "progress": False,
-        "prepost": False
-    }
-    if period:
-        download_params["period"] = period
-        print(f"Downloading data for period: {period}")
-    elif start_date and end_date:
-        download_params["start"] = start_date
-        download_params["end"] = end_date
-        print(f"Downloading data from {start_date} to {end_date}...")
-    else:
-        print("錯誤：您必須提供 'period' 或是 'start_date' 和 'end_date'。")
-        print("ERROR: You must provide either 'period' or both 'start_date' and 'end_date'.")
-        return None, None
-
-    stock_data = yf.download(**download_params)
-    # --- 修改結束 ---
-
     if stock_data.empty:
-        print(f"錯誤：無法在指定區間下載 {ticker} 的數據。")
-        print(f"ERROR: Failed to download data for {ticker} in the specified range.")
+        print(f"錯誤：{ticker} 沒有提供數據。")
+        print(f"ERROR: No data provided for {ticker}.")
         return None, None
 
-    print(f"數據下載完成，共 {len(stock_data)} 筆。")
-    print(f"Data download complete. Total bars: {len(stock_data)}.")
+    # 數據已預先處理，直接使用
+    print(f"Processing {ticker} data. Total bars: {len(stock_data)}.")
     print("-" * 30)
-
-    # --- 新增：時區轉換 (Add: Timezone Conversion) ---
-    try:
-        # yfinance 返回的數據通常是帶有時區資訊的，通常是 UTC
-        # 如果沒有時區資訊，先指定為 UTC (以防萬一)
-        if stock_data.index.tzinfo is None:
-             stock_data = stock_data.tz_localize('UTC')
-        else:
-             # 如果已經有時區資訊，確保是 UTC (yfinance 預設)
-             stock_data = stock_data.tz_convert('UTC')
-
-        # 將數據轉換到 'America/New_York' 時區
-        new_york_tz = pytz.timezone('America/New_York')
-        stock_data = stock_data.tz_convert(new_york_tz)
-        print("數據已轉換至 'America/New_York' 時區。")
-        print("-" * 30)
-
-    except Exception as e:
-        print(f"時區轉換錯誤 (Timezone conversion error): {e}")
-        # 即使時區轉換失敗，我們仍然可以繼續使用原始數據 (UTC)，但會印出警告
-        print("WARNING: Timezone conversion failed. Proceeding with original data timezone.")
-        print("-" * 30)
-    # --- 時區轉換結束 (End of Timezone Conversion) ---
 
 
     # --- 參數計算 (Parameter Calculation) ---
@@ -234,98 +185,133 @@ TICKER_SYMBOLS = ['ADBE','ALAB','AMD','BE','BND','CIFR','EOSE','FIG','GLD','GOOG
 # @title
 
 #儲存格6
-# --- 您可以在這裡修改個別參數 (You can modify parameters here) ---
+# --- 參數定義 (Parameter Definitions) ---
+# (保留儲存格 5, 6, 7/8 中的所有參數定義)
+HOLDING_HOURS = 2.5
+TICKER_SYMBOLS = ['ADBE','ALAB','AMD','BE','BND','CIFR','EOSE','FIG','GLD','GOOG','GRAB','IBIT','IONQ','LEU','MGK','MP','NVDA','NVTS','ONDS','POWI','RBRK','RCAT','SIVR','SMR','SOFI','TMDX','TSM','UUUU','VOO','VST','WWR']
 
-# --- 分析 1: 1m K線, 最近 7 天 ---
+# 分析 1 參數
 INTERVAL_1M = '1m'
-PERIOD_1M = '5d'
+PERIOD_1M = '5d' # 兩個分析共用 '5d'
+
+# 分析 2 & 3 參數
+INTERVAL_60M = '60m'
+# (註：原儲存格 7 和 7/8 都使用 '60m' 和 '5d'，我們在批次下載時使用)
 
 
 # --- 執行主程式 (Run Main Program) ---
 if __name__ == "__main__":
+
+    print("=======================================================")
+    print(f"======= 開始批次下載資料 (Starting Batch Download) =======")
+    print(f"Tickers: {TICKER_SYMBOLS}")
+    print(f"Intervals: {INTERVAL_1M}, {INTERVAL_60M}")
+    print(f"Period: {PERIOD_1M}")
+    print("=======================================================\n")
+
+    # --- 1. 批次下載所有資料 ---
+    data_1m_batch = yf.download(
+        tickers=TICKER_SYMBOLS,
+        interval=INTERVAL_1M,
+        period=PERIOD_1M,
+        progress=True,
+        prepost=False,
+        group_by='ticker' # 使用 group_by='ticker'
+    )
+
+    data_60m_batch = yf.download(
+        tickers=TICKER_SYMBOLS,
+        interval=INTERVAL_60M,
+        period=PERIOD_1M, # 兩個分析都使用 5d 週期
+        progress=True,
+        prepost=False,
+        group_by='ticker' # 使用 group_by='ticker'
+    )
+
+    # --- 2. 統一處理時區 (在迴圈外處理) ---
+    new_york_tz = pytz.timezone('America/New_York')
+
+    if not data_1m_batch.empty:
+        if data_1m_batch.index.tzinfo is None:
+            data_1m_batch.index = data_1m_batch.index.tz_localize('UTC').tz_convert(new_york_tz)
+        else:
+            data_1m_batch.index = data_1m_batch.index.tz_convert(new_york_tz)
+        print(f"1m 資料已轉換至 'America/New_York' 時區。")
+
+    if not data_60m_batch.empty:
+        if data_60m_batch.index.tzinfo is None:
+            data_60m_batch.index = data_60m_batch.index.tz_localize('UTC').tz_convert(new_york_tz)
+        else:
+            data_60m_batch.index = data_60m_batch.index.tz_convert(new_york_tz)
+        print(f"60m 資料已轉換至 'America/New_York' 時區。")
+
+    print("\n======= 資料下載與處理完畢。開始執行分析... =======")
+
+
+    # --- 3. 執行單一迴圈分析 ---
     for TICKER_SYMBOL in TICKER_SYMBOLS:
-      # --- 執行分析 1 (Run Analysis 1) ---
-      print(f"\n=======================================================")
-      print(f"======= 開始分析 1 (Starting Analysis 1): {INTERVAL_1M} K線 / {PERIOD_1M} =======")
-      print(f"=======================================================\n")
 
-      analysis_results_1m, detailed_df_1m = analyze_fixed_time_lag(
-          ticker=TICKER_SYMBOL,
-          interval=INTERVAL_1M,
-          holding_hours=HOLDING_HOURS*1,
-          period=PERIOD_1M  # <-- 使用 'period'
-      )
+        print(f"\n=======================================================")
+        print(f"======= 正在分析 (Now Analyzing): {TICKER_SYMBOL} =======")
+        print(f"=======================================================\n")
 
-      if analysis_results_1m and not detailed_df_1m.empty:
-          print_results(analysis_results_1m)
-          plot_results(analysis_results_1m, detailed_df_1m)
+        # --- 提取資料 (Extract Data) ---
+        try:
+            stock_data_1m = data_1m_batch[TICKER_SYMBOL].dropna()
+            stock_data_60m = data_60m_batch[TICKER_SYMBOL].dropna()
+        except KeyError:
+            print(f"*** 錯誤：無法從批次下載中提取 {TICKER_SYMBOL} 的資料。跳過... ***")
+            continue
+        except Exception as e:
+            print(f"*** 提取 {TICKER_SYMBOL} 資料時發生未知錯誤: {e}。跳過... ***")
+            continue
 
-      print(f"\n======= {INTERVAL_1M} K線分析結束 (Analysis Complete) =======")
+        if stock_data_1m.empty and stock_data_60m.empty:
+            print(f"*** {TICKER_SYMBOL} 沒有可分析的資料。跳過... ***")
+            continue
 
-# @title
-
-#儲存格7
-# --- 您可以在這裡修改個別參數 (You can modify parameters here) ---
-
-# --- 分析 1: 1m K線, 最近 7 天 ---
-INTERVAL_1M = '60m'
-PERIOD_1M = '5d'
-
-
-# --- 執行主程式 (Run Main Program) ---
-if __name__ == "__main__":
-    for TICKER_SYMBOL in TICKER_SYMBOLS:
-      # --- 執行分析 2 (Run Analysis 2) ---
-      print(f"\n=======================================================")
-      print(f"======= 開始分析 2 (Starting Analysis 2): {INTERVAL_1M} K線 / {PERIOD_1M} =======")
-      print(f"=======================================================\n")
-
-      analysis_results_1m, detailed_df_1m = analyze_fixed_time_lag(
-          ticker=TICKER_SYMBOL,
-          interval=INTERVAL_1M,
-          holding_hours=HOLDING_HOURS*2,
-          period=PERIOD_1M  # <-- 使用 'period'
-      )
-
-      if analysis_results_1m and not detailed_df_1m.empty:
-          print_results(analysis_results_1m)
-          plot_results(analysis_results_1m, detailed_df_1m)
-
-      print(f"\n======= {INTERVAL_1M} K線分析結束 (Analysis Complete) =======")
-
-# @title
-
-#儲存格7
-# --- 您可以在這裡修改個別參數 (You can modify parameters here) ---
-
-# --- 分析 3: 5m K線, 自訂日期 ---
-# *** 警告 (WARNING) ***
-# 5m K棒最多只能下載最近 60 天的數據。
-# (5m K-bars are limited to the last 60 days of data.)
-INTERVAL_5M = '60m'
-# (請使用 'YYYY-MM-DD' 格式，並確保在 60 天內)
-PERIOD_1M = '5d'
-START_DATE_5M = '2025-07-20'
-END_DATE_5M = '2025-08-10'
+        # --- 執行分析 1 (Run Analysis 1) ---
+        if not stock_data_1m.empty:
+            print(f"--- 分析 1 ({INTERVAL_1M} K線, {HOLDING_HOURS * 1} 小時) ---")
+            analysis_results_1, detailed_df_1 = analyze_fixed_time_lag(
+                stock_data=stock_data_1m, # <-- 傳入資料
+                ticker=TICKER_SYMBOL,
+                interval=INTERVAL_1M,
+                holding_hours=HOLDING_HOURS * 1
+            )
+            if analysis_results_1 and not detailed_df_1.empty:
+                print_results(analysis_results_1)
+                plot_results(analysis_results_1, detailed_df_1)
+        else:
+             print(f"--- {TICKER_SYMBOL} 缺少 {INTERVAL_1M} 資料，跳過分析 1 ---")
 
 
-# --- 執行主程式 (Run Main Program) ---
-if __name__ == "__main__":
-    for TICKER_SYMBOL in TICKER_SYMBOLS:
-      # --- 執行分析 3 (Run Analysis 3) ---
-      print(f"\n=======================================================")
-      print(f"======= 開始分析 3 (Starting Analysis 3): {INTERVAL_5M} K線 / 自訂日期 =======")
-      print(f"=======================================================\n")
+        # --- 執行分析 2 (Run Analysis 2) ---
+        if not stock_data_60m.empty:
+            print(f"\n--- 分析 2 ({INTERVAL_60M} K線, {HOLDING_HOURS * 2} 小時) ---")
+            analysis_results_2, detailed_df_2 = analyze_fixed_time_lag(
+                stock_data=stock_data_60m, # <-- 傳入資料
+                ticker=TICKER_SYMBOL,
+                interval=INTERVAL_60M,
+                holding_hours=HOLDING_HOURS * 2
+            )
+            if analysis_results_2 and not detailed_df_2.empty:
+                print_results(analysis_results_2)
+                plot_results(analysis_results_2, detailed_df_2)
 
-      analysis_results_5m, detailed_df_5m = analyze_fixed_time_lag(
-          ticker=TICKER_SYMBOL,
-          interval=INTERVAL_5M,
-          holding_hours=HOLDING_HOURS*4,
-          period=PERIOD_1M
-      )
+            # --- 執行分析 3 (Run Analysis 3) ---
+            print(f"\n--- 分析 3 ({INTERVAL_60M} K線, {HOLDING_HOURS * 4} 小時) ---")
+            analysis_results_3, detailed_df_3 = analyze_fixed_time_lag(
+                stock_data=stock_data_60m, # <-- 傳入資料
+                ticker=TICKER_SYMBOL,
+                interval=INTERVAL_60M,
+                holding_hours=HOLDING_HOURS * 4
+            )
+            if analysis_results_3 and not detailed_df_3.empty:
+                print_results(analysis_results_3)
+                plot_results(analysis_results_3, detailed_df_3)
+        else:
+            print(f"--- {TICKER_SYMBOL} 缺少 {INTERVAL_60M} 資料，跳過分析 2 & 3 ---")
 
-      if analysis_results_5m and not detailed_df_5m.empty:
-          print_results(analysis_results_5m)
-          plot_results(analysis_results_5m, detailed_df_5m)
 
-      print(f"\n======= {INTERVAL_5M} K線分析結束 (Analysis Complete) =======")
+    print(f"\n======= 所有分析結束 (All Analyses Complete) =======")
