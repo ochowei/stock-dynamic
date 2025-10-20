@@ -425,7 +425,7 @@ if __name__ == "__main__":
                 return df
             n = len(df)
             take = max(1, math.ceil(n / divid))
-            return df.tail(take) 
+            return df.tail(take).copy()
         
 
         for x in range(args.iterations):
