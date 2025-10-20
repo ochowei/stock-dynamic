@@ -56,11 +56,11 @@ def analyze_fixed_time_lag(stock_data: pd.DataFrame, ticker: str, interval: str,
 
     lag_periods = int(total_minutes_to_lag / minutes_per_bar)
 
-    print(f"分析參數 (Analysis Parameters)：")
-    print(f"  - K線間隔 (Interval): {interval} ({minutes_per_bar} 分鐘)")
-    print(f"  - 持有時長 (Holding Period): {holding_hours} 小時 (Hours)")
-    print(f"  - 回溯 K 棒 (Lag Periods): {lag_periods} 根 K 棒 (bars)")
-    print("-" * 30)
+    # print(f"分析參數 (Analysis Parameters)：")
+    # print(f"  - K線間隔 (Interval): {interval} ({minutes_per_bar} 分鐘)")
+    # print(f"  - 持有時長 (Holding Period): {holding_hours} 小時 (Hours)")
+    # print(f"  - 回溯 K 棒 (Lag Periods): {lag_periods} 根 K 棒 (bars)")
+    # print("-" * 30)
 
     # --- 核心計算 (Core Calculation) ---
     stock_data['P_buy'] = stock_data['Close'].shift(lag_periods)
@@ -102,25 +102,25 @@ def print_results(results: dict):
 
     holding_hours = results['holding_hours']
 
-    print(f"======= {results['ticker']} 股票 {holding_hours} 小時持有期分析結果 ({holding_hours}-Hour Holding Period Analysis) =======")
-    print(f"總有效交易次數 (Total Trades): {results['total_trades']:,}")
-    print("-" * 40)
+    # print(f"======= {results['ticker']} 股票 {holding_hours} 小時持有期分析結果 ({holding_hours}-Hour Holding Period Analysis) =======")
+    # print(f"總有效交易次數 (Total Trades): {results['total_trades']:,}")
+    # print("-" * 40)
 
-    print(f"下跌機率 (Probability of Loss): {results['loss_probability']:.2%}")
-    print(f"    (定義: {holding_hours} 小時後價格低於 {holding_hours} 小時前價格的機率)")
-    print(f"    (Definition: Probability that P_sell < P_buy)")
+    # print(f"下跌機率 (Probability of Loss): {results['loss_probability']:.2%}")
+    # print(f"    (定義: {holding_hours} 小時後價格低於 {holding_hours} 小時前價格的機率)")
+    # print(f"    (Definition: Probability that P_sell < P_buy)")
 
-    print("-" * 40)
-    print(f"價差期望值 (Expected Price Difference): ${results['avg_price_diff']:.4f}")
-    print(f"    - 平均獲利價差 (Avg. Gain Amount): ${results.get('avg_gain_diff', 0):.4f}")
-    print(f"    - 平均虧損價差 (Avg. Loss Amount): ${results.get('avg_loss_diff', 0):.4f}")
+    # print("-" * 40)
+    # print(f"價差期望值 (Expected Price Difference): ${results['avg_price_diff']:.4f}")
+    # print(f"    - 平均獲利價差 (Avg. Gain Amount): ${results.get('avg_gain_diff', 0):.4f}")
+    # print(f"    - 平均虧損價差 (Avg. Loss Amount): ${results.get('avg_loss_diff', 0):.4f}")
 
     print("-" * 40)
     print(f"價值期望值 (Expected Return %): {results['expected_return']:.4%}")
-    print(f"    (報酬率 > 0 的機率 (Win Rate %): {results['win_rate']:.2%})")
+    # print(f"    (報酬率 > 0 的機率 (Win Rate %): {results['win_rate']:.2%})")
 
     print("=" * 70)
-    print("註 (Note): 此分析未考慮交易手續費或滑價成本 (This analysis excludes commissions and slippage.)")
+    # print("註 (Note): 此分析未考慮交易手續費或滑價成本 (This analysis excludes commissions and slippage.)")
 
 # --- 這裡開始是修改過的函式 (This function is modified) ---
 
@@ -181,18 +181,16 @@ def plot_results(results: dict, analysis_df: pd.DataFrame, output_folder: str = 
 # 持有小時 (Holding Hours) - 兩項分析共用
 HOLDING_HOURS = 2.5
 # 股票代碼 (Ticker Symbol) - 兩項分析共用
-TICKER_SYMBOLS = ['ADBE','ALAB','AMD','BE','BND','CIFR','EOSE','FIG','GLD','GOOG','GRAB','IBIT','IONQ','LEU','MGK','MP','NVDA','NVTS','ONDS','POWI','RBRK','RCAT','SIVR','SMR','SOFI','TMDX','TSM','UUUU','VOO','VST','WWR']
+TICKER_SYMBOLS = ['00635U.TW','TSLA','ADBE','ALAB','AMD','BE','BND','CIFR','EOSE','FIG','GLD','GOOG','GRAB','IBIT','IONQ','LEU','MGK','MP','NVDA','NVTS','ONDS','POWI','RBRK','RCAT','SIVR','SMR','SOFI','TMDX','TSM','UUUU','VOO','VST','WWR']
 
 # @title
 
 #儲存格6
 # --- 參數定義 (Parameter Definitions) ---
 # (保留儲存格 5, 6, 7/8 中的所有參數定義)
-HOLDING_HOURS = 2.5
-TICKER_SYMBOLS = ['ADBE','ALAB','AMD','BE','BND','CIFR','EOSE','FIG','GLD','GOOG','GRAB','IBIT','IONQ','LEU','MGK','MP','NVDA','NVTS','ONDS','POWI','RBRK','RCAT','SIVR','SMR','SOFI','TMDX','TSM','UUUU','VOO','VST','WWR']
 
 # 分析 1 參數
-INTERVAL_1M = '1m'
+INTERVAL_1M = '30m'
 
 # 分析 2 & 3 參數
 INTERVAL_60M = '60m'
@@ -201,7 +199,7 @@ INTERVAL_60M = '60m'
 
 # --- 執行主程式 (Run Main Program) ---
 if __name__ == "__main__":
-
+    plt.ioff()
     # --- 1. 設定命令列參數解析 ---
     parser = argparse.ArgumentParser(
         description="執行 stock-dynamic 分析，可自訂分析週期。"
@@ -299,8 +297,8 @@ if __name__ == "__main__":
                 holding_hours=HOLDING_HOURS * 1
             )
             if analysis_results_1 and not detailed_df_1.empty:
-                print_results(analysis_results_1)
                 if not args.plot_on_profit or (args.plot_on_profit and analysis_results_1['expected_return'] > 0):
+                    print_results(analysis_results_1)
                     plot_results(analysis_results_1, detailed_df_1)
         else:
              print(f"--- {TICKER_SYMBOL} 缺少 {INTERVAL_1M} 資料，跳過分析 1 ---")
@@ -316,8 +314,8 @@ if __name__ == "__main__":
                 holding_hours=HOLDING_HOURS * 2
             )
             if analysis_results_2 and not detailed_df_2.empty:
-                print_results(analysis_results_2)
                 if not args.plot_on_profit or (args.plot_on_profit and analysis_results_2['expected_return'] > 0):
+                    print_results(analysis_results_2)
                     plot_results(analysis_results_2, detailed_df_2)
 
             # --- 執行分析 3 (Run Analysis 3) ---
@@ -328,9 +326,9 @@ if __name__ == "__main__":
                 interval=INTERVAL_60M,
                 holding_hours=HOLDING_HOURS * 4
             )
-            if analysis_results_3 and not detailed_df_3.empty:
-                print_results(analysis_results_3)
+            if analysis_results_3 and not detailed_df_3.empty:                
                 if not args.plot_on_profit or (args.plot_on_profit and analysis_results_3['expected_return'] > 0):
+                    print_results(analysis_results_3)
                     plot_results(analysis_results_3, detailed_df_3)
         else:
             print(f"--- {TICKER_SYMBOL} 缺少 {INTERVAL_60M} 資料，跳過分析 2 & 3 ---")
