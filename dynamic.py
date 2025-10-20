@@ -276,9 +276,13 @@ def plot_comparison_chart(data_map: dict, holding_hours: float, tickers_to_plot:
 # --- 您可以在這裡修改共用參數 (You can modify parameters here) ---
 # 持有小時 (Holding Hours) - 兩項分析共用
 # 股票代碼 (Ticker Symbol) - 兩項分析共用
-TICKER_SYMBOLS_US = ['TSLA','ADBE','ALAB','AMD','BE','BND','CIFR','EOSE','FIG','GLD','GOOG','GRAB','IBIT','IONQ','LEU','MGK','MP','NVDA','NVTS','ONDS','POWI','RBRK','RCAT','SIVR','SMR','SOFI','TMDX','TSM','UUUU','VOO','VST','WWR']
+TICKER_SYMBOLS_US_RARE_EARTH = ['MP','UUUU','UAMY']
+TICKER_SYMBOLS_US_DRONE = ['AVAV','ONDS','RCAT']
+TICKER_SYMBOLS_US_OTHER = ['ADBE','ALAB','AMD','BE','BND','CIFR','EOSE','FIG','GLD','GOOG','GRAB','IBIT','IONQ','LEU','MGK','NVDA','NVTS','POWI','RBRK','SIVR','SMR','SOFI','TMDX','TSM','VOO','VST','WWR']
+TICKER_SYMBOLS_US = TICKER_SYMBOLS_US_RARE_EARTH + TICKER_SYMBOLS_US_DRONE + TICKER_SYMBOLS_US_OTHER
 TICKER_SYMBOLS_TW = ['00635U.TW','2603.TW']
-TICKER_SYMBOLS = TICKER_SYMBOLS_US
+TICKER_SYMBOLS = TICKER_SYMBOLS_US_RARE_EARTH
+COMPARE_SYMBOLS = TICKER_SYMBOLS[:5]
 
 # @title
 
@@ -478,7 +482,7 @@ if __name__ == "__main__":
 
     # --- 5. 產生比較圖表 (Generating Comparison Charts) ---
     print("\n======= 正在產生比較圖表 (Generating Comparison Charts) =======")
-    comparison_tickers = TICKER_SYMBOLS[:3]
+    comparison_tickers = COMPARE_SYMBOLS[:6]
     for holding_hours, ticker_data_map in all_analysis_data.items():
         if ticker_data_map: # 確保有資料
             plot_comparison_chart(
