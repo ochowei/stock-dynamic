@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import re
 import argparse
+import math
 
 # @title
 #儲存格3
@@ -414,11 +415,21 @@ if __name__ == "__main__":
             print(f"*** {TICKER_SYMBOL} 沒有可分析的資料。跳過... ***")
             continue
 
+        def latest_one_third(df: pd.DataFrame, divid: int) -> pd.DataFrame:
+            if df is None or df.empty:
+                return df
+            n = len(df)
+            take = max(1, math.ceil(n / divid))
+            return df.tail(take) 
+        
+
         for x in range(args.iterations):
             holding_hours = args.base_hours * (x + 1)
             print(f"--- 分析 1 ({INTERVAL_SHORT} K線, {holding_hours} 小時) ---")
+            stock_data_short_interval_latest = latest_one_third(stock_data_short_interval, args.iterations/(x+1))
+
             analysis_results_1, detailed_df_1 = analyze_fixed_time_lag(
-                stock_data=stock_data_short_interval,
+                stock_data=stock_data_short_interval_latest,
                 ticker=TICKER_SYMBOL,
                 interval=INTERVAL_SHORT,
                 holding_hours=holding_hours
