@@ -249,7 +249,6 @@ def plot_comparison_chart(data_map: dict, holding_hours: float, tickers_to_plot:
 #儲存格5
 # --- 您可以在這裡修改共用參數 (You can modify parameters here) ---
 # 持有小時 (Holding Hours) - 兩項分析共用
-HOLDING_HOURS = 2
 # 股票代碼 (Ticker Symbol) - 兩項分析共用
 TICKER_SYMBOLS_US = ['TSLA','ADBE','ALAB','AMD','BE','BND','CIFR','EOSE','FIG','GLD','GOOG','GRAB','IBIT','IONQ','LEU','MGK','MP','NVDA','NVTS','ONDS','POWI','RBRK','RCAT','SIVR','SMR','SOFI','TMDX','TSM','UUUU','VOO','VST','WWR']
 TICKER_SYMBOLS_TW = ['00635U.TW','2603.TW']
@@ -278,10 +277,6 @@ if __name__ == "__main__":
     for f in files:
         os.remove(f)
         
-    all_analysis_data = {HOLDING_HOURS * (x + 1): {} for x in range(6)}
-
-
-
     plt.ioff()
     # --- 1. 設定命令列參數解析 ---
     parser = argparse.ArgumentParser(
@@ -294,12 +289,34 @@ if __name__ == "__main__":
         help="指定 yfinance 下載資料的週期 (例如: '5d', '7d', '1mo')"
     )
     parser.add_argument(
+        "-b", "--base-hours",
+        type=int,
+        default=2,
+        help="設定分析的基底持有小時 (Base holding hours for analysis)"
+    )
+    parser.add_argument(
+        "-i", "--iterations",
+        type=int,
+        default=6,
+        help="設定分析迴圈的次數 (Number of iterations for the analysis loop)"
+    )
+    parser.add_argument(
         "--plot-on-profit",
         action="store_true",
         help="僅在價值期望值 (Expected Return) > 0 時才儲存圖表。"
     )
     # (未來也可以在這裡新增 --tickers 或 --hours 參數)
     args = parser.parse_args()
+
+    all_analysis_data = {args.base_hours * (x + 1): {} for x in range(args.iterations)}
+
+    # --- 動態日期計算 (Dynamic Date Calculation) ---
+    max_lookback_hours = args.base_hours * args.iterations
+    max_lookback_timedelta = pd.Timedelta(hours=max_lookback_hours)
+    analysis_period_timedelta = pd.Timedelta(args.period)
+    total_download_timedelta = max_lookback_timedelta + analysis_period_timedelta
+    end_date = pd.Timestamp.now()
+    start_date = end_date - total_download_timedelta
 
 
     print("=======================================================")
@@ -313,7 +330,8 @@ if __name__ == "__main__":
     data_short_interval_batch = yf.download(
         tickers=TICKER_SYMBOLS,
         interval=INTERVAL_SHORT,
-        period=args.period, # <-- 使用 args.period
+        start=start_date,
+        end=end_date,
         progress=True,
         prepost=False,
         group_by='ticker'
@@ -322,7 +340,8 @@ if __name__ == "__main__":
     data_long_interval_batch = yf.download(
         tickers=TICKER_SYMBOLS,
         interval=INTERVAL_LONG,
-        period=args.period, # <-- 使用 args.period
+        start=start_date,
+        end=end_date,
         progress=True,
         prepost=False,
         group_by='ticker'
@@ -370,8 +389,8 @@ if __name__ == "__main__":
             print(f"*** {TICKER_SYMBOL} 沒有可分析的資料。跳過... ***")
             continue
 
-        for x in range(6):
-            holding_hours = HOLDING_HOURS * (x + 1)
+        for x in range(args.iterations):
+            holding_hours = args.base_hours * (x + 1)
             print(f"--- 分析 1 ({INTERVAL_SHORT} K線, {holding_hours} 小時) ---")
             analysis_results_1, detailed_df_1 = analyze_fixed_time_lag(
                 stock_data=stock_data_short_interval,
