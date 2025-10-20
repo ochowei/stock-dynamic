@@ -333,13 +333,16 @@ if __name__ == "__main__":
     # (未來也可以在這裡新增 --tickers 或 --hours 參數)
     args = parser.parse_args()
 
-    all_analysis_data = {args.base_hours * (x + 1): {} for x in range(args.iterations)}
+    all_analysis_data_short = {args.base_hours * (x + 1): {} for x in range(args.iterations)}
+    all_analysis_data_long = {args.base_hours * (x + 1): {} for x in range(args.iterations)}
+
 
     # --- 動態日期計算 (Dynamic Date Calculation) ---
+    new_york_tz = pytz.timezone('America/New_York')
     max_analysis_timedelta = pd.Timedelta(args.period) * args.iterations
     max_lookback_timedelta = pd.Timedelta(hours=args.base_hours * args.iterations)
     total_download_timedelta = max_analysis_timedelta + max_lookback_timedelta
-    end_date = pd.Timestamp.now()
+    end_date = pd.Timestamp.now(tz=new_york_tz)
     start_date = end_date - total_download_timedelta
 
 
@@ -373,8 +376,6 @@ if __name__ == "__main__":
     )
 
     # --- 2. 統一處理時區 (在迴圈外處理) ---
-    new_york_tz = pytz.timezone('America/New_York')
-
     if not data_short_interval_batch.empty:
         if data_short_interval_batch.index.tzinfo is None:
             data_short_interval_batch.index = data_short_interval_batch.index.tz_localize('UTC').tz_convert(new_york_tz)
@@ -441,7 +442,7 @@ if __name__ == "__main__":
             )
             if analysis_results_1 and detailed_df_1 is not None and not detailed_df_1.empty:
                 # 儲存資料供後續比較
-                all_analysis_data[holding_hours][TICKER_SYMBOL] = detailed_df_1
+                all_analysis_data_short[holding_hours][TICKER_SYMBOL] = detailed_df_1
 
                 # 繪製單圖 (保留原始功能)
                 if not args.plot_on_profit or (args.plot_on_profit and analysis_results_1['expected_return'] > 0):
@@ -457,8 +458,7 @@ if __name__ == "__main__":
                 holding_hours=holding_hours
             )
             if analysis_results_2 and detailed_df_2 is not None and not detailed_df_2.empty:
-                # NOTE: Results from the second analysis are not stored for comparison charts
-                # to keep the change focused on the refactoring task.
+                all_analysis_data_long[holding_hours][TICKER_SYMBOL] = detailed_df_2
                 if not args.plot_on_profit or (args.plot_on_profit and analysis_results_2['expected_return'] > 0):
                     print_results(analysis_results_2)
                     plot_results(analysis_results_2, detailed_df_2)
@@ -467,9 +467,19 @@ if __name__ == "__main__":
     print(f"\n======= 所有分析結束 (All Analyses Complete) =======")
 
     # --- 4. 產生比較圖表 ---
-    print("\n======= 正在產生比較圖表 (Generating Comparison Charts) =======")
+    print(f"\n======= 正在產生 {INTERVAL_SHORT} 比較圖表 (Generating {INTERVAL_SHORT} Comparison Charts) =======")
     comparison_tickers = TICKER_SYMBOLS_US[:3]
-    for holding_hours, ticker_data_map in all_analysis_data.items():
+    for holding_hours, ticker_data_map in all_analysis_data_short.items():
+        if ticker_data_map: # 確保有資料
+            plot_comparison_chart(
+                data_map=ticker_data_map,
+                holding_hours=holding_hours,
+                tickers_to_plot=comparison_tickers,
+                output_folder='output_img'
+            )
+
+    print(f"\n======= 正在產生 {INTERVAL_LONG} 比較圖表 (Generating {INTERVAL_LONG} Comparison Charts) =======")
+    for holding_hours, ticker_data_map in all_analysis_data_long.items():
         if ticker_data_map: # 確保有資料
             plot_comparison_chart(
                 data_map=ticker_data_map,
