@@ -336,10 +336,9 @@ if __name__ == "__main__":
     all_analysis_data = {args.base_hours * (x + 1): {} for x in range(args.iterations)}
 
     # --- 動態日期計算 (Dynamic Date Calculation) ---
-    max_lookback_hours = args.base_hours * args.iterations
-    max_lookback_timedelta = pd.Timedelta(hours=max_lookback_hours)
-    analysis_period_timedelta = pd.Timedelta(args.period)
-    total_download_timedelta = max_lookback_timedelta + analysis_period_timedelta
+    max_analysis_timedelta = pd.Timedelta(args.period) * args.iterations
+    max_lookback_timedelta = pd.Timedelta(hours=args.base_hours * args.iterations)
+    total_download_timedelta = max_analysis_timedelta + max_lookback_timedelta
     end_date = pd.Timestamp.now()
     start_date = end_date - total_download_timedelta
 
@@ -348,7 +347,8 @@ if __name__ == "__main__":
     print(f"======= 開始批次下載資料 (Starting Batch Download) =======")
     print(f"Tickers: {TICKER_SYMBOLS}")
     print(f"Intervals: {INTERVAL_SHORT}, {INTERVAL_LONG}")
-    print(f"Period: {args.period}") # <-- 使用 args.period
+    print(f"Base Period Unit: {args.period}")
+    print(f"Total Iterations: {args.iterations}")
     print("=======================================================\n")
 
     # --- 2. 批次下載所有資料 ---
@@ -415,10 +415,26 @@ if __name__ == "__main__":
             continue
 
         for x in range(args.iterations):
-            holding_hours = args.base_hours * (x + 1)
+            current_iteration = x + 1
+            holding_hours = args.base_hours * current_iteration
+
+            # --- Per-Iteration Data Slicing ---
+            current_analysis_timedelta = pd.Timedelta(args.period) * current_iteration
+            current_lookback_timedelta = pd.Timedelta(hours=holding_hours)
+            total_data_needed_for_this_iteration = current_analysis_timedelta + current_lookback_timedelta
+            iteration_start_date = end_date - total_data_needed_for_this_iteration
+
+            data_for_this_iteration_short = stock_data_short_interval[
+                stock_data_short_interval.index >= iteration_start_date
+            ].copy()
+
+            data_for_this_iteration_long = stock_data_long_interval[
+                stock_data_long_interval.index >= iteration_start_date
+            ].copy()
+
             print(f"--- 分析 1 ({INTERVAL_SHORT} K線, {holding_hours} 小時) ---")
             analysis_results_1, detailed_df_1 = analyze_fixed_time_lag(
-                stock_data=stock_data_short_interval,
+                stock_data=data_for_this_iteration_short, # <-- Pass sliced data
                 ticker=TICKER_SYMBOL,
                 interval=INTERVAL_SHORT,
                 holding_hours=holding_hours
@@ -431,6 +447,21 @@ if __name__ == "__main__":
                 if not args.plot_on_profit or (args.plot_on_profit and analysis_results_1['expected_return'] > 0):
                     print_results(analysis_results_1)
                     plot_results(analysis_results_1, detailed_df_1)
+
+            # --- Fix: Add the missing analysis for the long interval ---
+            print(f"--- 分析 2 ({INTERVAL_LONG} K線, {holding_hours} 小時) ---")
+            analysis_results_2, detailed_df_2 = analyze_fixed_time_lag(
+                stock_data=data_for_this_iteration_long, # <-- Pass sliced data
+                ticker=TICKER_SYMBOL,
+                interval=INTERVAL_LONG,
+                holding_hours=holding_hours
+            )
+            if analysis_results_2 and detailed_df_2 is not None and not detailed_df_2.empty:
+                # NOTE: Results from the second analysis are not stored for comparison charts
+                # to keep the change focused on the refactoring task.
+                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_2['expected_return'] > 0):
+                    print_results(analysis_results_2)
+                    plot_results(analysis_results_2, detailed_df_2)
 
 
     print(f"\n======= 所有分析結束 (All Analyses Complete) =======")
