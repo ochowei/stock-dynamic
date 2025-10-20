@@ -67,8 +67,8 @@ def analyze_fixed_time_lag(stock_data: pd.DataFrame, ticker: str, interval: str,
     # print("-" * 30)
 
     # --- 核心計算 (Core Calculation) ---
-    stock_data['P_buy'] = stock_data['Close'].shift(lag_periods)
-    stock_data['P_sell'] = stock_data['Close']
+    stock_data['P_buy'] = stock_data['Close']
+    stock_data['P_sell'] = stock_data['Close'].shift(-lag_periods)
 
     analysis_df = stock_data.dropna().copy()
 
@@ -277,7 +277,7 @@ def plot_comparison_chart(data_map: dict, holding_hours: float, tickers_to_plot:
 # 持有小時 (Holding Hours) - 兩項分析共用
 # 股票代碼 (Ticker Symbol) - 兩項分析共用
 TICKER_SYMBOLS_US_RARE_EARTH = ['MP','UUUU','UAMY']
-TICKER_SYMBOLS_US_DRONE = ['AVAV','ONDS','RCAT']
+TICKER_SYMBOLS_US_DRONE = ['ONDS','RCAT'] #AVAV
 TICKER_SYMBOLS_US_NUCLEAR = ['LEU','SMR']
 TICKER_SYMBOLS_US_POWER = ['BE','VST']
 TICKER_SYMBOLS_US_BETTERY = ['EOSE','WWR']
@@ -316,7 +316,7 @@ TICKER_SYMBOLS = TICKER_SYMBOLS_US
 # (保留儲存格 5, 6, 7/8 中的所有參數定義)
 
 # 分析 1 參數
-INTERVAL_SHORT = '15m'
+INTERVAL_SHORT = '5m'
 
 # 分析 2 & 3 參數
 INTERVAL_LONG = '60m'
@@ -329,8 +329,8 @@ if __name__ == "__main__":
     import os
     import glob
     files = glob.glob('output_img/*.png')
-    for f in files:
-        os.remove(f)
+    # for f in files:
+    #     os.remove(f)
         
     plt.ioff()
     # --- 1. 設定命令列參數解析 ---
@@ -345,7 +345,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-b", "--base-hours",
-        type=int,
+        type=float,
         default=2,
         help="設定分析的基底持有小時 (Base holding hours for analysis)"
     )
@@ -486,27 +486,27 @@ if __name__ == "__main__":
 
                 print(f"\n======= 所有分析結束 (All Analyses Complete) =======")
 
-            # --- 4. 產生總結報告 (Generate Summary Report) ---
-            print("\n======= 總結：各持有週期報酬率排行 (Summary: Return Ranking by Holding Period) =======")
-            
-            # 依 holding_hours (key) 排序字典，確保印出順序 (例如 2, 4, 6...)
-            for holding_hours in sorted(all_summary_results_grouped.keys()):
-                results_list = all_summary_results_grouped[holding_hours]
+        # --- 4. 產生總結報告 (Generate Summary Report) ---
+        print("\n======= 總結：各持有週期報酬率排行 (Summary: Return Ranking by Holding Period) =======")
+        
+        # 依 holding_hours (key) 排序字典，確保印出順序 (例如 2, 4, 6...)
+        for holding_hours in sorted(all_summary_results_grouped.keys()):
+            results_list = all_summary_results_grouped[holding_hours]
 
-                if not results_list:
-                    continue # 如果這個週期沒有任何資料，則跳過
+            if not results_list:
+                continue # 如果這個週期沒有任何資料，則跳過
 
-                print(f"\n--- 持有 {holding_hours} 小時 (Holding {holding_hours} Hours) ---")
+            print(f"\n--- 持有 {holding_hours} 小時 (Holding {holding_hours} Hours) ---")
 
-                # 依照 'expected_return' 由高至低排序
-                sorted_list = sorted(results_list, key=lambda r: r.get('expected_return', -float('inf')), reverse=True)
+            # 依照 'expected_return' 由高至低排序
+            sorted_list = sorted(results_list, key=lambda r: r.get('expected_return', -float('inf')), reverse=True)
 
-                if not sorted_list:
-                    print("  (無有效資料 No valid data)")
-                    continue
+            if not sorted_list:
+                print("  (無有效資料 No valid data)")
+                continue
 
-                for result in sorted_list:
-                    print(f"  - {result['ticker']}: {result['expected_return']:.4%}")
+            for result in sorted_list:
+                print(f"  - {result['ticker']}: {result['expected_return']:.4%}")
 
         # --- 5. 產生比較圖表 (Generating Comparison Charts) ---
         print("\n======= 正在產生比較圖表 (Generating Comparison Charts) =======")
