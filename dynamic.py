@@ -437,7 +437,7 @@ if __name__ == "__main__":
 
     # --- 4. 產生比較圖表 ---
     print("\n======= 正在產生比較圖表 (Generating Comparison Charts) =======")
-    comparison_tickers = TICKER_SYMBOLS_US[:3]
+    comparison_tickers = TICKER_SYMBOLS[:3]
     for holding_hours, ticker_data_map in all_analysis_data.items():
         if ticker_data_map: # 確保有資料
             plot_comparison_chart(
