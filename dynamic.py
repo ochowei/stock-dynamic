@@ -335,6 +335,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     all_analysis_data = {args.base_hours * (x + 1): {} for x in range(args.iterations)}
+    all_summary_results = []
 
     # --- 動態日期計算 (Dynamic Date Calculation) ---
     max_lookback_hours = args.base_hours * args.iterations
@@ -437,6 +438,7 @@ if __name__ == "__main__":
             if analysis_results_1 and detailed_df_1 is not None and not detailed_df_1.empty:
                 # 儲存資料供後續比較
                 all_analysis_data[holding_hours][TICKER_SYMBOL] = detailed_df_1
+                all_summary_results.append(analysis_results_1)
 
                 # 繪製單圖 (保留原始功能)
                 if not args.plot_on_profit or (args.plot_on_profit and analysis_results_1['expected_return'] > 0):
@@ -446,7 +448,17 @@ if __name__ == "__main__":
 
     print(f"\n======= 所有分析結束 (All Analyses Complete) =======")
 
-    # --- 4. 產生比較圖表 ---
+    # --- 4. 產生總結報告 (Generate Summary Report) ---
+    if all_summary_results:
+        print("\n======= 總結：平均報酬率排序 (Summary: Average Return Ranking) =======")
+
+        # Sort the results by 'expected_return' in descending order
+        sorted_results = sorted(all_summary_results, key=lambda r: r.get('expected_return', -float('inf')), reverse=True)
+
+        for result in sorted_results:
+            print(f"  - {result['ticker']} ({result['holding_hours']} 小時): {result['expected_return']:.4%}")
+
+    # --- 5. 產生比較圖表 (Generating Comparison Charts) ---
     print("\n======= 正在產生比較圖表 (Generating Comparison Charts) =======")
     comparison_tickers = TICKER_SYMBOLS[:3]
     for holding_hours, ticker_data_map in all_analysis_data.items():
