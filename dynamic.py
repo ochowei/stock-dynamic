@@ -189,25 +189,50 @@ def plot_comparison_chart(data_map: dict, holding_hours: float, tickers_to_plot:
     plt.style.use('seaborn-v0_8-whitegrid')
     plt.figure(figsize=(15, 8))
 
-    # 為指定的每支股票繪製一條線
+    # 1. 建立待合併的 DataFrame 列表
+    dfs_to_merge = []
     for ticker in tickers_to_plot:
         df = data_map.get(ticker)
         if df is not None and not df.empty:
-            # 使用 DatetimeIndex 作為 X 軸
-            plt.plot(df.index, df['return'].values * 100, label=ticker, linewidth=1)
+            # 選取 'return' 欄位並重新命名
+            renamed_df = df[['return']].rename(columns={'return': ticker})
+            dfs_to_merge.append(renamed_df)
+
+    # 2. 合併 DataFrame
+    if not dfs_to_merge:
+        return # 如果沒有可繪製的資料，則返回
+
+    comparison_df = dfs_to_merge[0].join(dfs_to_merge[1:], how='outer')
+    comparison_df.sort_index(inplace=True)
+
+    # 3. 修改繪圖邏輯
+    x_values = range(len(comparison_df))
+
+    # 遍歷 comparison_df 的欄位 (即股票代碼)
+    for ticker in comparison_df.columns:
+        plt.plot(x_values,
+                 comparison_df[ticker].values * 100,
+                 label=ticker,
+                 linewidth=1)
 
     plt.axhline(y=0, color='red', linestyle='--', label='Breakeven (Return = 0%)')
 
     # 設定圖表標題和標籤
     plt.title(f"Return Comparison for {', '.join(tickers_to_plot)}\nHolding Period: {holding_hours} Hours", fontsize=16)
     plt.ylabel("Return (%)", fontsize=12)
-    plt.xlabel("Date", fontsize=12)
+    plt.xlabel("Date (Skipping Non-Trading Periods)", fontsize=12)
 
-    # 格式化 X 軸日期
-    ax = plt.gca()
-    date_format = DateFormatter("%m-%d %H:%M")
-    ax.xaxis.set_major_formatter(date_format)
-    plt.xticks(rotation=30, ha='right')
+    # 4. 新增自訂 X 軸刻度
+    # 建立自訂的 X 軸標籤 (Create custom x-axis ticks)
+    num_ticks = 10
+    tick_indices = np.linspace(0, len(comparison_df) - 1, num_ticks, dtype=int)
+
+    # 確保 tick_indices 不會超出範圍
+    tick_indices = tick_indices[tick_indices < len(comparison_df)]
+
+    tick_labels = comparison_df.index[tick_indices].strftime('%m-%d %H:%M')
+
+    plt.xticks(ticks=tick_indices, labels=tick_labels, rotation=30, ha='right')
 
     plt.legend()
     plt.tight_layout()
