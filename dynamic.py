@@ -265,7 +265,7 @@ def plot_comparison_chart(data_map: dict, holding_hours: float, tickers_to_plot:
 
     # 儲存圖表
     safe_tickers_str = '_'.join(tickers_to_plot)
-    plot_filename = f"{output_folder}/COMP_{holding_hours}hr_{safe_tickers_str}.png"
+    plot_filename = f"{output_folder}/COMP_{safe_tickers_str}_{holding_hours}hr.png"
     plt.savefig(plot_filename)
     print(f"Comparison chart saved as {plot_filename}")
     plt.close()
@@ -278,11 +278,36 @@ def plot_comparison_chart(data_map: dict, holding_hours: float, tickers_to_plot:
 # 股票代碼 (Ticker Symbol) - 兩項分析共用
 TICKER_SYMBOLS_US_RARE_EARTH = ['MP','UUUU','UAMY']
 TICKER_SYMBOLS_US_DRONE = ['AVAV','ONDS','RCAT']
-TICKER_SYMBOLS_US_OTHER = ['ADBE','ALAB','AMD','BE','BND','CIFR','EOSE','FIG','GLD','GOOG','GRAB','IBIT','IONQ','LEU','MGK','NVDA','NVTS','POWI','RBRK','SIVR','SMR','SOFI','TMDX','TSM','VOO','VST','WWR']
-TICKER_SYMBOLS_US = TICKER_SYMBOLS_US_RARE_EARTH + TICKER_SYMBOLS_US_DRONE + TICKER_SYMBOLS_US_OTHER
+TICKER_SYMBOLS_US_NUCLEAR = ['LEU','SMR']
+TICKER_SYMBOLS_US_POWER = ['BE','VST']
+TICKER_SYMBOLS_US_BETTERY = ['EOSE','WWR']
+TICKER_SYMBOLS_US_AI_UP = ['ALAB','AMD','NVDA','NVTS','POWI','TSM']
+TICKER_SYMBOLS_US_AI_MEDIUM = ['GOOG']
+TICKER_SYMBOLS_US_AI_DOWN = ['ADBE','DUOL','FIG','GRAB','RBRK']
+TICKER_SYMBOLS_US_OTHER_STABLE = ['CIFR','SOFI','IBIT']
+TICKER_SYMBOLS_US_OTHER_GROWTH = ['IONQ','TMDX',]
+TICKER_SYMBOLS_US_OTHER_ETF = ['BND','GLD','VOO']
+
+TICKER_SYMBOLS_US_OTHER = []
+
+TICKER_LIST_ARRAY = [
+    TICKER_SYMBOLS_US_RARE_EARTH,
+    TICKER_SYMBOLS_US_DRONE,
+    TICKER_SYMBOLS_US_OTHER,
+    TICKER_SYMBOLS_US_NUCLEAR,
+    TICKER_SYMBOLS_US_POWER,
+    TICKER_SYMBOLS_US_BETTERY,
+    TICKER_SYMBOLS_US_AI_UP,
+    TICKER_SYMBOLS_US_AI_MEDIUM,
+    TICKER_SYMBOLS_US_AI_DOWN,
+    TICKER_SYMBOLS_US_OTHER_STABLE,
+    TICKER_SYMBOLS_US_OTHER_GROWTH,
+    TICKER_SYMBOLS_US_OTHER_ETF
+]
+
+TICKER_SYMBOLS_US = TICKER_SYMBOLS_US_RARE_EARTH + TICKER_SYMBOLS_US_DRONE + TICKER_SYMBOLS_US_OTHER + TICKER_SYMBOLS_US_NUCLEAR + TICKER_SYMBOLS_US_POWER + TICKER_SYMBOLS_US_BETTERY + TICKER_SYMBOLS_US_AI_UP + TICKER_SYMBOLS_US_AI_MEDIUM + TICKER_SYMBOLS_US_AI_DOWN + TICKER_SYMBOLS_US_OTHER_STABLE + TICKER_SYMBOLS_US_OTHER_GROWTH + TICKER_SYMBOLS_US_OTHER_ETF
 TICKER_SYMBOLS_TW = ['00635U.TW','2603.TW']
-TICKER_SYMBOLS = TICKER_SYMBOLS_US_RARE_EARTH
-COMPARE_SYMBOLS = TICKER_SYMBOLS[:5]
+TICKER_SYMBOLS = TICKER_SYMBOLS_US
 
 # @title
 
@@ -338,8 +363,7 @@ if __name__ == "__main__":
     # (未來也可以在這裡新增 --tickers 或 --hours 參數)
     args = parser.parse_args()
 
-    all_analysis_data = {args.base_hours * (x + 1): {} for x in range(args.iterations)}
-    all_summary_results_grouped = {args.base_hours * (x + 1): [] for x in range(args.iterations)}
+   
 
     # --- 動態日期計算 (Dynamic Date Calculation) ---
     max_lookback_hours = args.base_hours * args.iterations
@@ -374,7 +398,7 @@ if __name__ == "__main__":
         start=start_date,
         end=end_date,
         progress=True,
-        prepost=False,
+        prepost=True,
         group_by='ticker'
     )
 
@@ -397,97 +421,103 @@ if __name__ == "__main__":
 
     print("\n======= 資料下載與處理完畢。開始執行分析... =======")
 
-
-    # --- 3. 執行單一迴圈分析 ---
-    for TICKER_SYMBOL in TICKER_SYMBOLS:
-
-        print(f"\n=======================================================")
-        print(f"======= 正在分析 (Now Analyzing): {TICKER_SYMBOL} =======")
-        print(f"=======================================================\n")
-
-        # --- 提取資料 (Extract Data) ---
-        try:
-            stock_data_short_interval = data_short_interval_batch[TICKER_SYMBOL].dropna()
-            stock_data_long_interval = data_long_interval_batch[TICKER_SYMBOL].dropna()
-        except KeyError:
-            print(f"*** 錯誤：無法從批次下載中提取 {TICKER_SYMBOL} 的資料。跳過... ***")
-            continue
-        except Exception as e:
-            print(f"*** 提取 {TICKER_SYMBOL} 資料時發生未知錯誤: {e}。跳過... ***")
-            continue
-
-        if stock_data_short_interval.empty and stock_data_long_interval.empty:
-            print(f"*** {TICKER_SYMBOL} 沒有可分析的資料。跳過... ***")
-            continue
-
-        def latest_one_third(df: pd.DataFrame, divid: int) -> pd.DataFrame:
-            if df is None or df.empty:
-                return df
-            n = len(df)
-            take = max(1, math.ceil(n / divid))
-            return df.tail(take).copy()
+    for TICKER_SYMBOL_LIST in TICKER_LIST_ARRAY:
+        TICKER_SYMBOLS = TICKER_SYMBOL_LIST
+        all_analysis_data = {args.base_hours * (x + 1): {} for x in range(args.iterations)}
+        all_summary_results_grouped = {args.base_hours * (x + 1): [] for x in range(args.iterations)}
         
+        # --- 3. 執行單一迴圈分析 ---
+        for TICKER_SYMBOL in TICKER_SYMBOLS:
 
-        for x in range(args.iterations):
-            holding_hours = args.base_hours * (x + 1)
-            print(f"--- 分析 1 ({INTERVAL_SHORT} K線, {holding_hours} 小時) ---")
-            stock_data_short_interval_latest = latest_one_third(stock_data_short_interval, args.iterations/(x+1))
+            print(f"\n=======================================================")
+            print(f"======= 正在分析 (Now Analyzing): {TICKER_SYMBOL} =======")
+            print(f"=======================================================\n")
 
-            analysis_results_1, detailed_df_1 = analyze_fixed_time_lag(
-                stock_data=stock_data_short_interval_latest,
-                ticker=TICKER_SYMBOL,
-                interval=INTERVAL_SHORT,
-                holding_hours=holding_hours
-            )
-            if analysis_results_1 and detailed_df_1 is not None and not detailed_df_1.empty:
-                # 儲存資料供後續比較
-                all_analysis_data[holding_hours][TICKER_SYMBOL] = detailed_df_1
+            # --- 提取資料 (Extract Data) ---
+            try:
+                stock_data_short_interval = data_short_interval_batch[TICKER_SYMBOL].dropna()
+                stock_data_long_interval = data_long_interval_batch[TICKER_SYMBOL].dropna()
+            except KeyError:
+                print(f"*** 錯誤：無法從批次下載中提取 {TICKER_SYMBOL} 的資料。跳過... ***")
+                continue
+            except Exception as e:
+                print(f"*** 提取 {TICKER_SYMBOL} 資料時發生未知錯誤: {e}。跳過... ***")
+                continue
 
-                # v-- 新增這段邏輯 --v
-                current_hours = analysis_results_1['holding_hours']
-                if current_hours in all_summary_results_grouped:
-                    all_summary_results_grouped[current_hours].append(analysis_results_1)
-                # ^-- 新增結束 --^
+            if stock_data_short_interval.empty and stock_data_long_interval.empty:
+                print(f"*** {TICKER_SYMBOL} 沒有可分析的資料。跳過... ***")
+                continue
+
+            def latest_one_third(df: pd.DataFrame, divid: int) -> pd.DataFrame:
+                if df is None or df.empty:
+                    return df
+                n = len(df)
+                take = max(1, math.ceil(n / divid))
+                return df.tail(take).copy()
+            
+
+            for x in range(args.iterations):
+                holding_hours = args.base_hours * (x + 1)
+                print(f"--- 分析 1 ({INTERVAL_SHORT} K線, {holding_hours} 小時) ---")
+                stock_data_short_interval_latest = latest_one_third(stock_data_short_interval, args.iterations/(x+1))
+
+                analysis_results_1, detailed_df_1 = analyze_fixed_time_lag(
+                    stock_data=stock_data_short_interval_latest,
+                    ticker=TICKER_SYMBOL,
+                    interval=INTERVAL_SHORT,
+                    holding_hours=holding_hours
+                )
+                if analysis_results_1 and detailed_df_1 is not None and not detailed_df_1.empty:
+                    # 儲存資料供後續比較
+                    all_analysis_data[holding_hours][TICKER_SYMBOL] = detailed_df_1
+
+                    # v-- 新增這段邏輯 --v
+                    current_hours = analysis_results_1['holding_hours']
+                    if current_hours in all_summary_results_grouped:
+                        all_summary_results_grouped[current_hours].append(analysis_results_1)
+                    # ^-- 新增結束 --^
 
 
-                # 繪製單圖 (保留原始功能)
-                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_1['expected_return'] > 0):
-                    print_results(analysis_results_1)
-                    plot_results(analysis_results_1, detailed_df_1)
+                    # 繪製單圖 (保留原始功能)
+                    if not args.plot_on_profit or (args.plot_on_profit and analysis_results_1['expected_return'] > 0):
+                        print_results(analysis_results_1)
+                        plot_results(analysis_results_1, detailed_df_1)
 
 
-    print(f"\n======= 所有分析結束 (All Analyses Complete) =======")
+                print(f"\n======= 所有分析結束 (All Analyses Complete) =======")
 
-    # --- 4. 產生總結報告 (Generate Summary Report) ---
-    print("\n======= 總結：各持有週期報酬率排行 (Summary: Return Ranking by Holding Period) =======")
+            # --- 4. 產生總結報告 (Generate Summary Report) ---
+            print("\n======= 總結：各持有週期報酬率排行 (Summary: Return Ranking by Holding Period) =======")
+            
+            # 依 holding_hours (key) 排序字典，確保印出順序 (例如 2, 4, 6...)
+            for holding_hours in sorted(all_summary_results_grouped.keys()):
+                results_list = all_summary_results_grouped[holding_hours]
 
-    # 依 holding_hours (key) 排序字典，確保印出順序 (例如 2, 4, 6...)
-    for holding_hours in sorted(all_summary_results_grouped.keys()):
-        results_list = all_summary_results_grouped[holding_hours]
+                if not results_list:
+                    continue # 如果這個週期沒有任何資料，則跳過
 
-        if not results_list:
-            continue # 如果這個週期沒有任何資料，則跳過
+                print(f"\n--- 持有 {holding_hours} 小時 (Holding {holding_hours} Hours) ---")
 
-        print(f"\n--- 持有 {holding_hours} 小時 (Holding {holding_hours} Hours) ---")
+                # 依照 'expected_return' 由高至低排序
+                sorted_list = sorted(results_list, key=lambda r: r.get('expected_return', -float('inf')), reverse=True)
 
-        # 依照 'expected_return' 由高至低排序
-        sorted_list = sorted(results_list, key=lambda r: r.get('expected_return', -float('inf')), reverse=True)
+                if not sorted_list:
+                    print("  (無有效資料 No valid data)")
+                    continue
 
-        if not sorted_list:
-            print("  (無有效資料 No valid data)")
-            continue
+                for result in sorted_list:
+                    print(f"  - {result['ticker']}: {result['expected_return']:.4%}")
 
-        for result in sorted_list:
-            print(f"  - {result['ticker']}: {result['expected_return']:.4%}")
+        # --- 5. 產生比較圖表 (Generating Comparison Charts) ---
+        print("\n======= 正在產生比較圖表 (Generating Comparison Charts) =======")
+        COMPARE_SYMBOLS = TICKER_SYMBOLS[:5]
 
-    # --- 5. 產生比較圖表 (Generating Comparison Charts) ---
-    print("\n======= 正在產生比較圖表 (Generating Comparison Charts) =======")
-    comparison_tickers = COMPARE_SYMBOLS[:6]
-    for holding_hours, ticker_data_map in all_analysis_data.items():
-        if ticker_data_map: # 確保有資料
-            plot_comparison_chart(
-                data_map=ticker_data_map,
-                holding_hours=holding_hours,
-                tickers_to_plot=comparison_tickers,
-                output_folder='output_img'
-            )
+        comparison_tickers = COMPARE_SYMBOLS[:6]
+        for holding_hours, ticker_data_map in all_analysis_data.items():
+            if ticker_data_map: # 確保有資料
+                plot_comparison_chart(
+                    data_map=ticker_data_map,
+                    holding_hours=holding_hours,
+                    tickers_to_plot=comparison_tickers,
+                    output_folder='output_img'
+                )
