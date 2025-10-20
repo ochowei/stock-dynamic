@@ -208,12 +208,37 @@ def plot_comparison_chart(data_map: dict, holding_hours: float, tickers_to_plot:
     # 3. 修改繪圖邏輯
     x_values = range(len(comparison_df))
 
+    # 獲取 matplotlib 預設的顏色循環
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colors = prop_cycle.by_key()['color']
+
     # 遍歷 comparison_df 的欄位 (即股票代碼)
-    for ticker in comparison_df.columns:
+    for i, ticker in enumerate(comparison_df.columns):
+
+        # 獲取當前 ticker 的顏色
+        ticker_color = colors[i % len(colors)]
+
+        # 繪製主要的報酬率線
         plt.plot(x_values,
                  comparison_df[ticker].values * 100,
                  label=ticker,
-                 linewidth=1)
+                 linewidth=1,
+                 color=ticker_color) # 指定顏色
+
+        # --- 新增開始 ---
+
+        # 1. 計算平均值
+        avg_return = comparison_df[ticker].mean()
+
+        # 2. 繪製平均線
+        if pd.notna(avg_return): # 確保平均值有效
+            plt.axhline(y=avg_return * 100,
+                        color=ticker_color, # 使用相同顏色
+                        linestyle='--',     # 使用虛線
+                        linewidth=0.8,
+                        label=f'{ticker} Avg ({avg_return:.4%})') # 3. 新增 Label
+        # --- 新增結束 ---
+
 
     plt.axhline(y=0, color='red', linestyle='--', label='Breakeven (Return = 0%)')
 
