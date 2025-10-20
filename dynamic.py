@@ -190,10 +190,10 @@ TICKER_SYMBOLS = ['00635U.TW','TSLA','ADBE','ALAB','AMD','BE','BND','CIFR','EOSE
 # (保留儲存格 5, 6, 7/8 中的所有參數定義)
 
 # 分析 1 參數
-INTERVAL_1M = '30m'
+INTERVAL_SHORT = '30m'
 
 # 分析 2 & 3 參數
-INTERVAL_60M = '60m'
+INTERVAL_LONG = '60m'
 # (註：原儲存格 7 和 7/8 都使用 '60m' 和 '5d'，我們在批次下載時使用)
 
 
@@ -222,23 +222,23 @@ if __name__ == "__main__":
     print("=======================================================")
     print(f"======= 開始批次下載資料 (Starting Batch Download) =======")
     print(f"Tickers: {TICKER_SYMBOLS}")
-    print(f"Intervals: {INTERVAL_1M}, {INTERVAL_60M}")
+    print(f"Intervals: {INTERVAL_SHORT}, {INTERVAL_LONG}")
     print(f"Period: {args.period}") # <-- 使用 args.period
     print("=======================================================\n")
 
     # --- 2. 批次下載所有資料 ---
-    data_1m_batch = yf.download(
+    data_short_interval_batch = yf.download(
         tickers=TICKER_SYMBOLS,
-        interval=INTERVAL_1M,
+        interval=INTERVAL_SHORT,
         period=args.period, # <-- 使用 args.period
         progress=True,
         prepost=False,
         group_by='ticker'
     )
 
-    data_60m_batch = yf.download(
+    data_long_interval_batch = yf.download(
         tickers=TICKER_SYMBOLS,
-        interval=INTERVAL_60M,
+        interval=INTERVAL_LONG,
         period=args.period, # <-- 使用 args.period
         progress=True,
         prepost=False,
@@ -248,18 +248,18 @@ if __name__ == "__main__":
     # --- 2. 統一處理時區 (在迴圈外處理) ---
     new_york_tz = pytz.timezone('America/New_York')
 
-    if not data_1m_batch.empty:
-        if data_1m_batch.index.tzinfo is None:
-            data_1m_batch.index = data_1m_batch.index.tz_localize('UTC').tz_convert(new_york_tz)
+    if not data_short_interval_batch.empty:
+        if data_short_interval_batch.index.tzinfo is None:
+            data_short_interval_batch.index = data_short_interval_batch.index.tz_localize('UTC').tz_convert(new_york_tz)
         else:
-            data_1m_batch.index = data_1m_batch.index.tz_convert(new_york_tz)
+            data_short_interval_batch.index = data_short_interval_batch.index.tz_convert(new_york_tz)
         print(f"1m 資料已轉換至 'America/New_York' 時區。")
 
-    if not data_60m_batch.empty:
-        if data_60m_batch.index.tzinfo is None:
-            data_60m_batch.index = data_60m_batch.index.tz_localize('UTC').tz_convert(new_york_tz)
+    if not data_long_interval_batch.empty:
+        if data_long_interval_batch.index.tzinfo is None:
+            data_long_interval_batch.index = data_long_interval_batch.index.tz_localize('UTC').tz_convert(new_york_tz)
         else:
-            data_60m_batch.index = data_60m_batch.index.tz_convert(new_york_tz)
+            data_long_interval_batch.index = data_long_interval_batch.index.tz_convert(new_york_tz)
         print(f"60m 資料已轉換至 'America/New_York' 時區。")
 
     print("\n======= 資料下載與處理完畢。開始執行分析... =======")
@@ -274,8 +274,8 @@ if __name__ == "__main__":
 
         # --- 提取資料 (Extract Data) ---
         try:
-            stock_data_1m = data_1m_batch[TICKER_SYMBOL].dropna()
-            stock_data_60m = data_60m_batch[TICKER_SYMBOL].dropna()
+            stock_data_short_interval = data_short_interval_batch[TICKER_SYMBOL].dropna()
+            stock_data_long_interval = data_long_interval_batch[TICKER_SYMBOL].dropna()
         except KeyError:
             print(f"*** 錯誤：無法從批次下載中提取 {TICKER_SYMBOL} 的資料。跳過... ***")
             continue
@@ -283,55 +283,55 @@ if __name__ == "__main__":
             print(f"*** 提取 {TICKER_SYMBOL} 資料時發生未知錯誤: {e}。跳過... ***")
             continue
 
-        if stock_data_1m.empty and stock_data_60m.empty:
+        if stock_data_short_interval.empty and stock_data_long_interval.empty:
             print(f"*** {TICKER_SYMBOL} 沒有可分析的資料。跳過... ***")
             continue
 
-        # --- 執行分析 1 (Run Analysis 1) ---
-        if not stock_data_1m.empty:
-            print(f"--- 分析 1 ({INTERVAL_1M} K線, {HOLDING_HOURS * 1} 小時) ---")
-            analysis_results_1, detailed_df_1 = analyze_fixed_time_lag(
-                stock_data=stock_data_1m, # <-- 傳入資料
+        # --- 執行分析 (SHORT) ---
+        if not stock_data_short_interval.empty:
+            print(f"--- 分析 (SHORT) ({INTERVAL_SHORT} K線, {HOLDING_HOURS * 1} 小時) ---")
+            analysis_results_short, detailed_df_short = analyze_fixed_time_lag(
+                stock_data=stock_data_short_interval, # <-- 傳入資料
                 ticker=TICKER_SYMBOL,
-                interval=INTERVAL_1M,
+                interval=INTERVAL_SHORT,
                 holding_hours=HOLDING_HOURS * 1
             )
-            if analysis_results_1 and not detailed_df_1.empty:
-                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_1['expected_return'] > 0):
-                    print_results(analysis_results_1)
-                    plot_results(analysis_results_1, detailed_df_1)
+            if analysis_results_short and not detailed_df_short.empty:
+                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_short['expected_return'] > 0):
+                    print_results(analysis_results_short)
+                    plot_results(analysis_results_short, detailed_df_short)
         else:
-             print(f"--- {TICKER_SYMBOL} 缺少 {INTERVAL_1M} 資料，跳過分析 1 ---")
+             print(f"--- {TICKER_SYMBOL} 缺少 {INTERVAL_SHORT} 資料，跳過分析 (SHORT) ---")
 
 
-        # --- 執行分析 2 (Run Analysis 2) ---
-        if not stock_data_60m.empty:
-            print(f"\n--- 分析 2 ({INTERVAL_60M} K線, {HOLDING_HOURS * 2} 小時) ---")
-            analysis_results_2, detailed_df_2 = analyze_fixed_time_lag(
-                stock_data=stock_data_60m, # <-- 傳入資料
+        # --- 執行分析 (LONG BASE) ---
+        if not stock_data_long_interval.empty:
+            print(f"\n--- 分析 (LONG BASE) ({INTERVAL_LONG} K線, {HOLDING_HOURS * 2} 小時) ---")
+            analysis_results_long_base, detailed_df_long_base = analyze_fixed_time_lag(
+                stock_data=stock_data_long_interval, # <-- 傳入資料
                 ticker=TICKER_SYMBOL,
-                interval=INTERVAL_60M,
+                interval=INTERVAL_LONG,
                 holding_hours=HOLDING_HOURS * 2
             )
-            if analysis_results_2 and not detailed_df_2.empty:
-                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_2['expected_return'] > 0):
-                    print_results(analysis_results_2)
-                    plot_results(analysis_results_2, detailed_df_2)
+            if analysis_results_long_base and not detailed_df_long_base.empty:
+                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_long_base['expected_return'] > 0):
+                    print_results(analysis_results_long_base)
+                    plot_results(analysis_results_long_base, detailed_df_long_base)
 
-            # --- 執行分析 3 (Run Analysis 3) ---
-            print(f"\n--- 分析 3 ({INTERVAL_60M} K線, {HOLDING_HOURS * 4} 小時) ---")
-            analysis_results_3, detailed_df_3 = analyze_fixed_time_lag(
-                stock_data=stock_data_60m, # <-- 傳入資料
+            # --- 執行分析 (LONG EXT) ---
+            print(f"\n--- 分析 (LONG EXT) ({INTERVAL_LONG} K線, {HOLDING_HOURS * 4} 小時) ---")
+            analysis_results_long_extended, detailed_df_long_extended = analyze_fixed_time_lag(
+                stock_data=stock_data_long_interval, # <-- 傳入資料
                 ticker=TICKER_SYMBOL,
-                interval=INTERVAL_60M,
+                interval=INTERVAL_LONG,
                 holding_hours=HOLDING_HOURS * 4
             )
-            if analysis_results_3 and not detailed_df_3.empty:                
-                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_3['expected_return'] > 0):
-                    print_results(analysis_results_3)
-                    plot_results(analysis_results_3, detailed_df_3)
+            if analysis_results_long_extended and not detailed_df_long_extended.empty:
+                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_long_extended['expected_return'] > 0):
+                    print_results(analysis_results_long_extended)
+                    plot_results(analysis_results_long_extended, detailed_df_long_extended)
         else:
-            print(f"--- {TICKER_SYMBOL} 缺少 {INTERVAL_60M} 資料，跳過分析 2 & 3 ---")
+            print(f"--- {TICKER_SYMBOL} 缺少 {INTERVAL_LONG} 資料，跳過分析 (LONG) ---")
 
 
     print(f"\n======= 所有分析結束 (All Analyses Complete) =======")
