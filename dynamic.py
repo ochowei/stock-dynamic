@@ -23,6 +23,9 @@ import argparse
 #儲存格3
 import pytz # 引入 pytz 函式庫
 
+import os
+import glob
+
 def analyze_fixed_time_lag(stock_data: pd.DataFrame, ticker: str, interval: str, holding_hours: float):
     """
     分析一檔股票在給定數據下，與 {holding_hours} 小時前的 K 線收盤價的價差。
@@ -179,9 +182,11 @@ def plot_results(results: dict, analysis_df: pd.DataFrame, output_folder: str = 
 #儲存格5
 # --- 您可以在這裡修改共用參數 (You can modify parameters here) ---
 # 持有小時 (Holding Hours) - 兩項分析共用
-HOLDING_HOURS = 2.5
+HOLDING_HOURS = 2
 # 股票代碼 (Ticker Symbol) - 兩項分析共用
-TICKER_SYMBOLS = ['00635U.TW','TSLA','ADBE','ALAB','AMD','BE','BND','CIFR','EOSE','FIG','GLD','GOOG','GRAB','IBIT','IONQ','LEU','MGK','MP','NVDA','NVTS','ONDS','POWI','RBRK','RCAT','SIVR','SMR','SOFI','TMDX','TSM','UUUU','VOO','VST','WWR']
+TICKER_SYMBOLS_US = ['TSLA','ADBE','ALAB','AMD','BE','BND','CIFR','EOSE','FIG','GLD','GOOG','GRAB','IBIT','IONQ','LEU','MGK','MP','NVDA','NVTS','ONDS','POWI','RBRK','RCAT','SIVR','SMR','SOFI','TMDX','TSM','UUUU','VOO','VST','WWR']
+TICKER_SYMBOLS_TW = ['00635U.TW','2603.TW']
+TICKER_SYMBOLS = TICKER_SYMBOLS_US
 
 # @title
 
@@ -190,7 +195,7 @@ TICKER_SYMBOLS = ['00635U.TW','TSLA','ADBE','ALAB','AMD','BE','BND','CIFR','EOSE
 # (保留儲存格 5, 6, 7/8 中的所有參數定義)
 
 # 分析 1 參數
-INTERVAL_SHORT = '30m'
+INTERVAL_SHORT = '15m'
 
 # 分析 2 & 3 參數
 INTERVAL_LONG = '60m'
@@ -199,6 +204,15 @@ INTERVAL_LONG = '60m'
 
 # --- 執行主程式 (Run Main Program) ---
 if __name__ == "__main__":
+    # remove all the .png files in output_img folder
+    import os
+    import glob
+    files = glob.glob('output_img/*.png')
+    for f in files:
+        os.remove(f)
+        
+
+
     plt.ioff()
     # --- 1. 設定命令列參數解析 ---
     parser = argparse.ArgumentParser(
@@ -287,6 +301,20 @@ if __name__ == "__main__":
             print(f"*** {TICKER_SYMBOL} 沒有可分析的資料。跳過... ***")
             continue
 
+        for x in range(6):
+            holding_hours = HOLDING_HOURS * (x + 1)
+            print(f"--- 分析 1 ({INTERVAL_SHORT} K線, {holding_hours} 小時) ---")
+            analysis_results_1, detailed_df_1 = analyze_fixed_time_lag(
+                stock_data=stock_data_short_interval, # <-- 傳入資料
+                ticker=TICKER_SYMBOL,
+                interval=INTERVAL_SHORT,
+                holding_hours=holding_hours
+            )
+            if analysis_results_1 and not detailed_df_1.empty:
+                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_1['expected_return'] > 0):
+                    print_results(analysis_results_1)
+                    plot_results(analysis_results_1, detailed_df_1)
+
         # --- 執行分析 (SHORT) ---
         if not stock_data_short_interval.empty:
             print(f"--- 分析 (SHORT) ({INTERVAL_SHORT} K線, {HOLDING_HOURS * 1} 小時) ---")
@@ -319,17 +347,17 @@ if __name__ == "__main__":
                     plot_results(analysis_results_long_base, detailed_df_long_base)
 
             # --- 執行分析 (LONG EXT) ---
-            print(f"\n--- 分析 (LONG EXT) ({INTERVAL_LONG} K線, {HOLDING_HOURS * 4} 小時) ---")
-            analysis_results_long_extended, detailed_df_long_extended = analyze_fixed_time_lag(
-                stock_data=stock_data_long_interval, # <-- 傳入資料
-                ticker=TICKER_SYMBOL,
-                interval=INTERVAL_LONG,
-                holding_hours=HOLDING_HOURS * 4
-            )
-            if analysis_results_long_extended and not detailed_df_long_extended.empty:
-                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_long_extended['expected_return'] > 0):
-                    print_results(analysis_results_long_extended)
-                    plot_results(analysis_results_long_extended, detailed_df_long_extended)
+            # print(f"\n--- 分析 (LONG EXT) ({INTERVAL_LONG} K線, {HOLDING_HOURS * 4} 小時) ---")
+            # analysis_results_long_extended, detailed_df_long_extended = analyze_fixed_time_lag(
+            #     stock_data=stock_data_long_interval, # <-- 傳入資料
+            #     ticker=TICKER_SYMBOL,
+            #     interval=INTERVAL_LONG,
+            #     holding_hours=HOLDING_HOURS * 4
+            # )
+            # if analysis_results_long_extended and not detailed_df_long_extended.empty:
+            #     if not args.plot_on_profit or (args.plot_on_profit and analysis_results_long_extended['expected_return'] > 0):
+            #         print_results(analysis_results_long_extended)
+            #         plot_results(analysis_results_long_extended, detailed_df_long_extended)
         else:
             print(f"--- {TICKER_SYMBOL} 缺少 {INTERVAL_LONG} 資料，跳過分析 (LONG) ---")
 
