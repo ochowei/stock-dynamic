@@ -335,6 +335,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     all_analysis_data = {args.base_hours * (x + 1): {} for x in range(args.iterations)}
+    all_summary_results_grouped = {args.base_hours * (x + 1): [] for x in range(args.iterations)}
 
     # --- 動態日期計算 (Dynamic Date Calculation) ---
     max_lookback_hours = args.base_hours * args.iterations
@@ -438,6 +439,13 @@ if __name__ == "__main__":
                 # 儲存資料供後續比較
                 all_analysis_data[holding_hours][TICKER_SYMBOL] = detailed_df_1
 
+                # v-- 新增這段邏輯 --v
+                current_hours = analysis_results_1['holding_hours']
+                if current_hours in all_summary_results_grouped:
+                    all_summary_results_grouped[current_hours].append(analysis_results_1)
+                # ^-- 新增結束 --^
+
+
                 # 繪製單圖 (保留原始功能)
                 if not args.plot_on_profit or (args.plot_on_profit and analysis_results_1['expected_return'] > 0):
                     print_results(analysis_results_1)
@@ -446,7 +454,29 @@ if __name__ == "__main__":
 
     print(f"\n======= 所有分析結束 (All Analyses Complete) =======")
 
-    # --- 4. 產生比較圖表 ---
+    # --- 4. 產生總結報告 (Generate Summary Report) ---
+    print("\n======= 總結：各持有週期報酬率排行 (Summary: Return Ranking by Holding Period) =======")
+
+    # 依 holding_hours (key) 排序字典，確保印出順序 (例如 2, 4, 6...)
+    for holding_hours in sorted(all_summary_results_grouped.keys()):
+        results_list = all_summary_results_grouped[holding_hours]
+
+        if not results_list:
+            continue # 如果這個週期沒有任何資料，則跳過
+
+        print(f"\n--- 持有 {holding_hours} 小時 (Holding {holding_hours} Hours) ---")
+
+        # 依照 'expected_return' 由高至低排序
+        sorted_list = sorted(results_list, key=lambda r: r.get('expected_return', -float('inf')), reverse=True)
+
+        if not sorted_list:
+            print("  (無有效資料 No valid data)")
+            continue
+
+        for result in sorted_list:
+            print(f"  - {result['ticker']}: {result['expected_return']:.4%}")
+
+    # --- 5. 產生比較圖表 (Generating Comparison Charts) ---
     print("\n======= 正在產生比較圖表 (Generating Comparison Charts) =======")
     comparison_tickers = TICKER_SYMBOLS[:3]
     for holding_hours, ticker_data_map in all_analysis_data.items():
