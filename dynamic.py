@@ -176,7 +176,49 @@ def plot_results(results: dict, analysis_df: pd.DataFrame, output_folder: str = 
     plot_filename = f"{output_folder}/{results['ticker']}_{holding_hours}hr.png"
     plt.savefig(plot_filename)
     print(f"Plot saved as {plot_filename}")
+    plt.close()
     # plt.show()
+
+def plot_comparison_chart(data_map: dict, holding_hours: float, tickers_to_plot: list, output_folder: str):
+    """
+    繪製多支股票在同一個持有週期下的報酬率比較圖。
+    Plots a comparison chart of returns for multiple stocks over the same holding period.
+    """
+    from matplotlib.dates import DateFormatter
+
+    plt.style.use('seaborn-v0_8-whitegrid')
+    plt.figure(figsize=(15, 8))
+
+    # 為指定的每支股票繪製一條線
+    for ticker in tickers_to_plot:
+        df = data_map.get(ticker)
+        if df is not None and not df.empty:
+            # 使用 DatetimeIndex 作為 X 軸
+            plt.plot(df.index, df['return'].values * 100, label=ticker, linewidth=1)
+
+    plt.axhline(y=0, color='red', linestyle='--', label='Breakeven (Return = 0%)')
+
+    # 設定圖表標題和標籤
+    plt.title(f"Return Comparison for {', '.join(tickers_to_plot)}\nHolding Period: {holding_hours} Hours", fontsize=16)
+    plt.ylabel("Return (%)", fontsize=12)
+    plt.xlabel("Date", fontsize=12)
+
+    # 格式化 X 軸日期
+    ax = plt.gca()
+    date_format = DateFormatter("%m-%d %H:%M")
+    ax.xaxis.set_major_formatter(date_format)
+    plt.xticks(rotation=30, ha='right')
+
+    plt.legend()
+    plt.tight_layout()
+
+    # 儲存圖表
+    safe_tickers_str = '_'.join(tickers_to_plot)
+    plot_filename = f"{output_folder}/COMP_{holding_hours}hr_{safe_tickers_str}.png"
+    plt.savefig(plot_filename)
+    print(f"Comparison chart saved as {plot_filename}")
+    plt.close()
+
 
 # @title
 #儲存格5
@@ -211,6 +253,8 @@ if __name__ == "__main__":
     for f in files:
         os.remove(f)
         
+    all_analysis_data = {HOLDING_HOURS * (x + 1): {} for x in range(6)}
+
 
 
     plt.ioff()
@@ -305,61 +349,31 @@ if __name__ == "__main__":
             holding_hours = HOLDING_HOURS * (x + 1)
             print(f"--- 分析 1 ({INTERVAL_SHORT} K線, {holding_hours} 小時) ---")
             analysis_results_1, detailed_df_1 = analyze_fixed_time_lag(
-                stock_data=stock_data_short_interval, # <-- 傳入資料
+                stock_data=stock_data_short_interval,
                 ticker=TICKER_SYMBOL,
                 interval=INTERVAL_SHORT,
                 holding_hours=holding_hours
             )
-            if analysis_results_1 and not detailed_df_1.empty:
+            if analysis_results_1 and detailed_df_1 is not None and not detailed_df_1.empty:
+                # 儲存資料供後續比較
+                all_analysis_data[holding_hours][TICKER_SYMBOL] = detailed_df_1
+
+                # 繪製單圖 (保留原始功能)
                 if not args.plot_on_profit or (args.plot_on_profit and analysis_results_1['expected_return'] > 0):
                     print_results(analysis_results_1)
                     plot_results(analysis_results_1, detailed_df_1)
 
-        # --- 執行分析 (SHORT) ---
-        if not stock_data_short_interval.empty:
-            print(f"--- 分析 (SHORT) ({INTERVAL_SHORT} K線, {HOLDING_HOURS * 1} 小時) ---")
-            analysis_results_short, detailed_df_short = analyze_fixed_time_lag(
-                stock_data=stock_data_short_interval, # <-- 傳入資料
-                ticker=TICKER_SYMBOL,
-                interval=INTERVAL_SHORT,
-                holding_hours=HOLDING_HOURS * 1
-            )
-            if analysis_results_short and not detailed_df_short.empty:
-                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_short['expected_return'] > 0):
-                    print_results(analysis_results_short)
-                    plot_results(analysis_results_short, detailed_df_short)
-        else:
-             print(f"--- {TICKER_SYMBOL} 缺少 {INTERVAL_SHORT} 資料，跳過分析 (SHORT) ---")
-
-
-        # --- 執行分析 (LONG BASE) ---
-        if not stock_data_long_interval.empty:
-            print(f"\n--- 分析 (LONG BASE) ({INTERVAL_LONG} K線, {HOLDING_HOURS * 2} 小時) ---")
-            analysis_results_long_base, detailed_df_long_base = analyze_fixed_time_lag(
-                stock_data=stock_data_long_interval, # <-- 傳入資料
-                ticker=TICKER_SYMBOL,
-                interval=INTERVAL_LONG,
-                holding_hours=HOLDING_HOURS * 2
-            )
-            if analysis_results_long_base and not detailed_df_long_base.empty:
-                if not args.plot_on_profit or (args.plot_on_profit and analysis_results_long_base['expected_return'] > 0):
-                    print_results(analysis_results_long_base)
-                    plot_results(analysis_results_long_base, detailed_df_long_base)
-
-            # --- 執行分析 (LONG EXT) ---
-            # print(f"\n--- 分析 (LONG EXT) ({INTERVAL_LONG} K線, {HOLDING_HOURS * 4} 小時) ---")
-            # analysis_results_long_extended, detailed_df_long_extended = analyze_fixed_time_lag(
-            #     stock_data=stock_data_long_interval, # <-- 傳入資料
-            #     ticker=TICKER_SYMBOL,
-            #     interval=INTERVAL_LONG,
-            #     holding_hours=HOLDING_HOURS * 4
-            # )
-            # if analysis_results_long_extended and not detailed_df_long_extended.empty:
-            #     if not args.plot_on_profit or (args.plot_on_profit and analysis_results_long_extended['expected_return'] > 0):
-            #         print_results(analysis_results_long_extended)
-            #         plot_results(analysis_results_long_extended, detailed_df_long_extended)
-        else:
-            print(f"--- {TICKER_SYMBOL} 缺少 {INTERVAL_LONG} 資料，跳過分析 (LONG) ---")
-
 
     print(f"\n======= 所有分析結束 (All Analyses Complete) =======")
+
+    # --- 4. 產生比較圖表 ---
+    print("\n======= 正在產生比較圖表 (Generating Comparison Charts) =======")
+    comparison_tickers = TICKER_SYMBOLS_US[:3]
+    for holding_hours, ticker_data_map in all_analysis_data.items():
+        if ticker_data_map: # 確保有資料
+            plot_comparison_chart(
+                data_map=ticker_data_map,
+                holding_hours=holding_hours,
+                tickers_to_plot=comparison_tickers,
+                output_folder='output_img'
+            )
