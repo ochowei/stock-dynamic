@@ -361,18 +361,47 @@ if __name__ == "__main__":
     # (未來也可以在這裡新增 --tickers 或 --hours 參數)
     args = parser.parse_args()
 
+    # --- Setup output directory and summary file ---
+    output_txt_dir = "output_txt"
+    if not os.path.exists(output_txt_dir):
+        os.makedirs(output_txt_dir)
+        print(f"Created directory: {output_txt_dir}")
+
+    summary_filename = os.path.join(output_txt_dir, "summary_report.txt")
+
+    # --- Overwrite the file at the beginning of the run ---
+    try:
+        with open(summary_filename, 'w', encoding='utf-8') as f:
+            f.write("Stock Dynamic Analysis Report\n")
+            f.write("="*40 + "\n\n")
+        print(f"Initialized summary report: {summary_filename}")
+    except IOError as e:
+        print(f"Error initializing summary report file: {e}")
+
+
     if args.clean:
         print("Cleaning output_img/ directory...")
         # 確保 os 和 glob 已經在檔案頂部匯入
-        files = glob.glob('output_img/*.png')
-        count = 0
-        for f in files:
+        img_files = glob.glob('output_img/*.png')
+        img_count = 0
+        for f in img_files:
             try:
                 os.remove(f)
-                count += 1
+                img_count += 1
             except OSError as e:
                 print(f"Error removing file {f}: {e}")
-        print(f"Removed {count} .png file(s) from output_img/.")
+        print(f"Removed {img_count} .png file(s) from output_img/.")
+
+        print("Cleaning output_txt/ directory...")
+        txt_files = glob.glob('output_txt/*.txt')
+        txt_count = 0
+        for f in txt_files:
+            try:
+                os.remove(f)
+                txt_count += 1
+            except OSError as e:
+                print(f"Error removing file {f}: {e}")
+        print(f"Removed {txt_count} .txt file(s) from output_txt/.")
 
     # --- 動態日期計算 (Dynamic Date Calculation) ---
     max_lookback_hours = args.base_hours * args.iterations
@@ -496,26 +525,38 @@ if __name__ == "__main__":
                 print(f"\n======= 所有分析結束 (All Analyses Complete) =======")
 
         # --- 4. 產生總結報告 (Generate Summary Report) ---
-        print("\n======= 總結：各持有週期報酬率排行 (Summary: Return Ranking by Holding Period) =======")
-        
-        # 依 holding_hours (key) 排序字典，確保印出順序 (例如 2, 4, 6...)
-        for holding_hours in sorted(all_summary_results_grouped.keys()):
-            results_list = all_summary_results_grouped[holding_hours]
+        summary_header = "\n======= 總結：各持有週期報酬率排行 (Summary: Return Ranking by Holding Period) ======="
+        print(summary_header)
+        try:
+            with open(summary_filename, 'a', encoding='utf-8') as f:
+                f.write(summary_header + "\n")
 
-            if not results_list:
-                continue # 如果這個週期沒有任何資料，則跳過
+                # 依 holding_hours (key) 排序字典，確保印出順序 (例如 2, 4, 6...)
+                for holding_hours in sorted(all_summary_results_grouped.keys()):
+                    results_list = all_summary_results_grouped[holding_hours]
 
-            print(f"\n--- 持有 {holding_hours} 小時 (Holding {holding_hours} Hours) ---")
+                    if not results_list:
+                        continue
 
-            # 依照 'expected_return' 由高至低排序
-            sorted_list = sorted(results_list, key=lambda r: r.get('expected_return', -float('inf')), reverse=True)
+                    period_header = f"\n--- 持有 {holding_hours} 小時 (Holding {holding_hours} Hours) ---"
+                    print(period_header)
+                    f.write(period_header + "\n")
 
-            if not sorted_list:
-                print("  (無有效資料 No valid data)")
-                continue
+                    # 依照 'expected_return' 由高至低排序
+                    sorted_list = sorted(results_list, key=lambda r: r.get('expected_return', -float('inf')), reverse=True)
 
-            for result in sorted_list:
-                print(f"  - {result['ticker']}: {result['expected_return']:.4%}")
+                    if not sorted_list:
+                        no_data_msg = "  (無有效資料 No valid data)"
+                        print(no_data_msg)
+                        f.write(no_data_msg + "\n")
+                        continue
+
+                    for result in sorted_list:
+                        result_line = f"  - {result['ticker']}: {result['expected_return']:.4%}"
+                        print(result_line)
+                        f.write(result_line + "\n")
+        except IOError as e:
+            print(f"Error writing to summary report file: {e}")
 
         # --- 5. 產生比較圖表 (Generating Comparison Charts) ---
         print("\n======= 正在產生比較圖表 (Generating Comparison Charts) =======")
