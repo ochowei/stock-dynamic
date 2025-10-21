@@ -325,13 +325,6 @@ INTERVAL_LONG = '60m'
 
 # --- 執行主程式 (Run Main Program) ---
 if __name__ == "__main__":
-    # remove all the .png files in output_img folder
-    import os
-    import glob
-    files = glob.glob('output_img/*.png')
-    # for f in files:
-    #     os.remove(f)
-        
     plt.ioff()
     # --- 1. 設定命令列參數解析 ---
     parser = argparse.ArgumentParser(
@@ -360,10 +353,26 @@ if __name__ == "__main__":
         action="store_true",
         help="僅在價值期望值 (Expected Return) > 0 時才儲存圖表。"
     )
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="在執行分析前，清除 output_img/ 資料夾中的所有 .png 檔案 (Clear all .png files in output_img/ before execution)."
+    )
     # (未來也可以在這裡新增 --tickers 或 --hours 參數)
     args = parser.parse_args()
 
-   
+    if args.clean:
+        print("Cleaning output_img/ directory...")
+        # 確保 os 和 glob 已經在檔案頂部匯入
+        files = glob.glob('output_img/*.png')
+        count = 0
+        for f in files:
+            try:
+                os.remove(f)
+                count += 1
+            except OSError as e:
+                print(f"Error removing file {f}: {e}")
+        print(f"Removed {count} .png file(s) from output_img/.")
 
     # --- 動態日期計算 (Dynamic Date Calculation) ---
     max_lookback_hours = args.base_hours * args.iterations
