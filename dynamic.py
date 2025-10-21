@@ -62,6 +62,7 @@ def analyze_fixed_time_lag(stock_data: pd.DataFrame, ticker: str, interval: str,
 
     analysis_df['price_diff'] = analysis_df['P_sell'] - analysis_df['P_buy']
     analysis_df['return'] = (analysis_df['P_sell'] - analysis_df['P_buy']) / analysis_df['P_buy']
+    analysis_df['return_slope'] = analysis_df['return'].diff()
 
     # --- 統計分析結果 (Statistical Analysis) ---
     total_trades = len(analysis_df)
@@ -251,6 +252,75 @@ def plot_comparison_chart(data_map: dict, holding_hours: float, tickers_to_plot:
     print(f"Comparison chart saved as {plot_filename}")
     plt.close()
 
+def plot_slope_comparison(ticker_symbol: str, period_data_map: dict, output_folder: str):
+    """
+    繪製單一股票在所有持有週期的「斜率」資料的比較圖。
+    Plots a comparison chart of the 'return_slope' for a single stock across all holding periods.
+    """
+    plt.style.use('seaborn-v0_8-whitegrid')
+    plt.figure(figsize=(15, 8))
+
+    # 1. 資料合併 (Data Merging)
+    dfs_to_merge = []
+    for holding_hours, df in period_data_map.items():
+        if df is not None and not df.empty and 'return_slope' in df.columns:
+            # Select the 'return_slope' column and rename it
+            renamed_df = df[['return_slope']].rename(columns={'return_slope': f'Slope_{holding_hours}h'})
+            dfs_to_merge.append(renamed_df)
+
+    if not dfs_to_merge:
+        print(f"No slope data available to plot for {ticker_symbol}.")
+        return
+
+    comparison_df = dfs_to_merge[0].join(dfs_to_merge[1:], how='outer')
+    comparison_df.sort_index(inplace=True)
+
+    # 2. 繪圖 (Plotting)
+    x_values = range(len(comparison_df))
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colors = prop_cycle.by_key()['color']
+
+    for i, column in enumerate(comparison_df.columns):
+        color = colors[i % len(colors)]
+
+        # Plot the main slope line (multiplied by 100 for percentage representation)
+        plt.plot(x_values,
+                 comparison_df[column].values * 100,
+                 label=column,
+                 linewidth=1,
+                 color=color)
+
+        # Plot the average slope line
+        avg_slope = comparison_df[column].mean()
+        if pd.notna(avg_slope):
+            plt.axhline(y=avg_slope * 100,
+                        color=color,
+                        linestyle='--',
+                        linewidth=0.8,
+                        label=f'{column} Avg ({avg_slope:.4f})')
+
+    plt.axhline(y=0, color='red', linestyle='--', label='No Change')
+
+    # 3. 圖表標題與儲存 (Title and Saving)
+    plt.title(f"{ticker_symbol} - Return Slope Comparison by Holding Period", fontsize=16)
+    plt.ylabel("Return Slope (Change per Trade, %)", fontsize=12)
+    plt.xlabel("Date (Skipping Non-Trading Periods)", fontsize=12)
+
+    num_ticks = 10
+    tick_indices = np.linspace(0, len(comparison_df) - 1, num_ticks, dtype=int)
+    tick_indices = tick_indices[tick_indices < len(comparison_df)]
+    tick_labels = comparison_df.index[tick_indices].strftime('%m-%d %H:%M')
+
+    plt.xticks(ticks=tick_indices, labels=tick_labels, rotation=30, ha='right')
+    plt.legend()
+    plt.tight_layout()
+
+    plot_filename = f"{output_folder}/SLOPE_COMP_{ticker_symbol}.png"
+    plt.savefig(plot_filename)
+    print(f"Slope comparison chart saved as {plot_filename}")
+    plt.close()
+
+
 def latest_one_third(df: pd.DataFrame, divid: int) -> pd.DataFrame:
     if df is None or df.empty:
         return df
@@ -377,6 +447,8 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
             print(f"======= 正在分析 (Now Analyzing): {ticker_symbol} =======")
             print(f"=======================================================\n")
 
+            ticker_period_dfs = {} # New dictionary to store DFs for slope comparison
+
             try:
                 stock_data_short_interval = data_short_batch[ticker_symbol].dropna()
             except (KeyError, AttributeError):
@@ -400,6 +472,9 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
                 )
 
                 if analysis_results and detailed_df is not None and not detailed_df.empty:
+                    # Store the detailed_df for the new slope comparison plot
+                    ticker_period_dfs[holding_hours] = detailed_df
+
                     # Initialize dicts if they don't exist
                     if holding_hours not in all_analysis_data_master:
                         all_analysis_data_master[holding_hours] = {}
@@ -414,6 +489,10 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
                         plot_results(analysis_results, detailed_df)
 
             print(f"\n======= {ticker_symbol} 分析結束 (Analysis Complete) =======")
+
+            # After iterating through all periods for a ticker, plot the slope comparison
+            if ticker_period_dfs:
+                plot_slope_comparison(ticker_symbol, ticker_period_dfs, 'output_img')
 
         generate_summary_reports(all_summary_results_master, summary_filename)
 
