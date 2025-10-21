@@ -346,11 +346,11 @@ def download_stock_data(tickers: list, interval_short: str, interval_long: str, 
 
     return data_short_interval_batch, data_long_interval_batch
 
-def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batch, args: argparse.Namespace):
+def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batch, args: argparse.Namespace, summary_filename: str):
     """
     Runs the main analysis loops through all ticker lists and holding periods.
     """
-   
+
 
     for ticker_list in ticker_list_array:
         if not ticker_list:
@@ -402,34 +402,43 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
 
             print(f"\n======= {ticker_symbol} 分析結束 (Analysis Complete) =======")
 
-        generate_summary_reports(all_summary_results_master)
+        generate_summary_reports(all_summary_results_master, summary_filename)
 
         generate_comparison_plots(all_analysis_data_master, ticker_list, 'output_img')
 
     return all_analysis_data_master, all_summary_results_master
 
-def generate_summary_reports(all_summary_results_grouped: dict):
+def generate_summary_reports(all_summary_results_grouped: dict, summary_filename: str):
     """
-    Generates and prints the summary report of returns ranked by holding period.
+    Generates and prints the summary report, and appends it to a file.
     """
-    print("\n======= 總結：各持有週期報酬率排行 (Summary: Return Ranking by Holding Period) =======")
+    report_header = "\n======= 總結：各持有週期報酬率排行 (Summary: Return Ranking by Holding Period) ======="
+    print(report_header)
+    with open(summary_filename, 'a', encoding='utf-8') as f:
+        f.write(report_header + "\n")
 
-    for holding_hours in sorted(all_summary_results_grouped.keys()):
-        results_list = all_summary_results_grouped[holding_hours]
+        for holding_hours in sorted(all_summary_results_grouped.keys()):
+            results_list = all_summary_results_grouped[holding_hours]
 
-        if not results_list:
-            continue
+            if not results_list:
+                continue
 
-        print(f"\n--- 持有 {holding_hours} 小時 (Holding {holding_hours} Hours) ---")
+            period_header = f"\n--- 持有 {holding_hours} 小時 (Holding {holding_hours} Hours) ---"
+            print(period_header)
+            f.write(period_header + "\n")
 
-        sorted_list = sorted(results_list, key=lambda r: r.get('expected_return', -float('inf')), reverse=True)
+            sorted_list = sorted(results_list, key=lambda r: r.get('expected_return', -float('inf')), reverse=True)
 
-        if not sorted_list:
-            print("  (無有效資料 No valid data)")
-            continue
+            if not sorted_list:
+                no_data_msg = "  (無有效資料 No valid data)"
+                print(no_data_msg)
+                f.write(no_data_msg + "\n")
+                continue
 
-        for result in sorted_list:
-            print(f"  - {result['ticker']}: {result['expected_return']:.4%}")
+            for result in sorted_list:
+                result_line = f"  - {result['ticker']}: {result['expected_return']:.4%}"
+                print(result_line)
+                f.write(result_line + "\n")
 
 def generate_comparison_plots(all_analysis_data: dict, ticker_list: list, output_folder: str):
     """
@@ -460,17 +469,33 @@ def main():
     parser = setup_arg_parser()
     args = parser.parse_args()
 
+    # 自動建立輸出資料夾 (Automatically create output folders)
+    os.makedirs("output_img", exist_ok=True)
+    os.makedirs("output_txt", exist_ok=True)
+
     if args.clean:
-        print("Cleaning output_img/ directory...")
-        files = glob.glob('output_img/*.png')
-        count = 0
-        for f in files:
+        print("Cleaning output directories...")
+        # Clean images
+        img_files = glob.glob('output_img/*.png')
+        img_count = 0
+        for f in img_files:
             try:
                 os.remove(f)
-                count += 1
+                img_count += 1
             except OSError as e:
                 print(f"Error removing file {f}: {e}")
-        print(f"Removed {count} .png file(s) from output_img/.")
+        print(f"Removed {img_count} .png file(s) from output_img/.")
+
+        # Clean text reports
+        txt_files = glob.glob('output_txt/*.txt')
+        txt_count = 0
+        for f in txt_files:
+            try:
+                os.remove(f)
+                txt_count += 1
+            except OSError as e:
+                print(f"Error removing file {f}: {e}")
+        print(f"Removed {txt_count} .txt file(s) from output_txt/.")
 
     # Dynamic Date Calculation
     max_lookback_hours = args.base_hours * args.iterations
@@ -480,13 +505,29 @@ def main():
     end_date = pd.Timestamp.now()
     start_date = end_date - total_download_timedelta
 
+    # 定義報告檔案路徑 (Define report file path)
+    summary_filename = "output_txt/summary_report.txt"
+
+    # 在迴圈開始前，清空檔案並寫入標頭 (Before the loop, clear the file and write the header)
+    try:
+        with open(summary_filename, 'w', encoding='utf-8') as f:
+            f.write("Stock Dynamic Analysis Report\n")
+            f.write("=============================\n")
+        print(f"Summary report will be saved to {summary_filename}")
+    except IOError as e:
+        print(f"Error: Unable to write to file {summary_filename}. {e}")
+        # 選擇性地決定是否要因此錯誤而中止程式
+        # Optionally, decide if you want to exit the script on this error
+        return
+
+
     # Use the global TICKER_SYMBOLS for the download
     data_short, data_long = download_stock_data(
         TICKER_SYMBOLS, INTERVAL_SHORT, INTERVAL_LONG, start_date, end_date, args.period
     )
 
     all_data, all_results = run_analysis_loops(
-        TICKER_LIST_ARRAY, data_short, data_long, args
+        TICKER_LIST_ARRAY, data_short, data_long, args, summary_filename
     )
 
     print("\n======= 程式執行完畢 (Process Finished) =======")
