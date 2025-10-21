@@ -10,4 +10,4 @@ wheels/
 .venv
 *.png
 .DS_Store
-output_txt/
+output_txt/*.txt
