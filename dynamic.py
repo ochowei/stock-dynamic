@@ -23,7 +23,7 @@ def analyze_fixed_time_lag(stock_data: pd.DataFrame, ticker: str, interval: str,
 
     # 數據已預先處理，直接使用
     print(f"Processing {ticker} data. Total bars: {len(stock_data)}.")
-    print("-" * 30)
+    # print("-" * 30)
 
 
     # --- 參數計算 (Parameter Calculation) ---
@@ -100,11 +100,11 @@ def print_results(results: dict):
     # print(f"    - 平均獲利價差 (Avg. Gain Amount): ${results.get('avg_gain_diff', 0):.4f}")
     # print(f"    - 平均虧損價差 (Avg. Loss Amount): ${results.get('avg_loss_diff', 0):.4f}")
 
-    print("-" * 40)
-    print(f"價值期望值 (Expected Return %): {results['expected_return']:.4%}")
+    # print("-" * 40)
+    # print(f"價值期望值 (Expected Return %): {results['expected_return']:.4%}")
     # print(f"    (報酬率 > 0 的機率 (Win Rate %): {results['win_rate']:.2%})")
 
-    print("=" * 70)
+    # print("=" * 70)
     # print("註 (Note): 此分析未考慮交易手續費或滑價成本 (This analysis excludes commissions and slippage.)")
 
 # --- 這裡開始是修改過的函式 (This function is modified) ---
@@ -350,12 +350,14 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
     """
     Runs the main analysis loops through all ticker lists and holding periods.
     """
-    all_analysis_data_master = {}
-    all_summary_results_master = {}
+   
 
     for ticker_list in ticker_list_array:
         if not ticker_list:
             continue
+
+        all_analysis_data_master = {}
+        all_summary_results_master = {}
 
         for ticker_symbol in ticker_list:
             print(f"\n=======================================================")
@@ -400,6 +402,10 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
 
             print(f"\n======= {ticker_symbol} 分析結束 (Analysis Complete) =======")
 
+        generate_summary_reports(all_summary_results_master)
+
+        generate_comparison_plots(all_analysis_data_master, ticker_list, 'output_img')
+
     return all_analysis_data_master, all_summary_results_master
 
 def generate_summary_reports(all_summary_results_grouped: dict):
@@ -425,14 +431,14 @@ def generate_summary_reports(all_summary_results_grouped: dict):
         for result in sorted_list:
             print(f"  - {result['ticker']}: {result['expected_return']:.4%}")
 
-def generate_comparison_plots(all_analysis_data: dict, ticker_list_array: list, output_folder: str):
+def generate_comparison_plots(all_analysis_data: dict, ticker_list: list, output_folder: str):
     """
     Generates comparison plot charts for each holding period.
     """
     print("\n======= 正在產生比較圖表 (Generating Comparison Charts) =======")
 
     # Flatten the ticker list array for easier processing
-    all_tickers_in_run = [ticker for sublist in ticker_list_array for ticker in sublist]
+    all_tickers_in_run = ticker_list
 
     for holding_hours, ticker_data_map in all_analysis_data.items():
         if ticker_data_map:
@@ -482,10 +488,6 @@ def main():
     all_data, all_results = run_analysis_loops(
         TICKER_LIST_ARRAY, data_short, data_long, args
     )
-
-    generate_summary_reports(all_results)
-
-    generate_comparison_plots(all_data, TICKER_LIST_ARRAY, 'output_img')
 
     print("\n======= 程式執行完畢 (Process Finished) =======")
 
