@@ -293,9 +293,20 @@ def setup_arg_parser():
         action="store_true",
         help="在執行分析前，清除 output_img/ 資料夾中的所有 .png 檔案 (Clear all .png files in output_img/ before execution)."
     )
+    parser.add_argument(
+        '--prepost-short',
+        action='store_true',
+        help='下載短週期資料時包含盤前盤後數據 (Include pre/post market data for short interval download).'
+    )
+    parser.add_argument(
+        '--no-prepost-long',
+        dest='prepost_long',
+        action='store_false',
+        help='下載長週期資料時不包含盤前盤後數據 (Exclude pre/post market data for long interval download).'
+    )
     return parser
 
-def download_stock_data(tickers: list, interval_short: str, interval_long: str, start_date, end_date, period: str):
+def download_stock_data(tickers: list, interval_short: str, interval_long: str, start_date, end_date, period: str, args: argparse.Namespace):
     """
     Downloads stock data for the given tickers and intervals, and handles timezone conversion.
     """
@@ -304,6 +315,8 @@ def download_stock_data(tickers: list, interval_short: str, interval_long: str, 
     print(f"Tickers: {tickers}")
     print(f"Intervals: {interval_short}, {interval_long}")
     print(f"Period: {period}")
+    print(f"Pre/Post Market (Short): {args.prepost_short}")
+    print(f"Pre/Post Market (Long): {args.prepost_long}")
     print("=======================================================\n")
 
     data_short_interval_batch = yf.download(
@@ -312,7 +325,7 @@ def download_stock_data(tickers: list, interval_short: str, interval_long: str, 
         start=start_date,
         end=end_date,
         progress=True,
-        prepost=False,
+        prepost=args.prepost_short,
         group_by='ticker'
     )
 
@@ -322,7 +335,7 @@ def download_stock_data(tickers: list, interval_short: str, interval_long: str, 
         start=start_date,
         end=end_date,
         progress=True,
-        prepost=True,
+        prepost=args.prepost_long,
         group_by='ticker'
     )
 
@@ -523,7 +536,7 @@ def main():
 
     # Use the global TICKER_SYMBOLS for the download
     data_short, data_long = download_stock_data(
-        TICKER_SYMBOLS, INTERVAL_SHORT, INTERVAL_LONG, start_date, end_date, args.period
+        TICKER_SYMBOLS, INTERVAL_SHORT, INTERVAL_LONG, start_date, end_date, args.period, args
     )
 
     all_data, all_results = run_analysis_loops(
