@@ -7,7 +7,7 @@ import os
 import glob
 
 # Import modularized functions
-from src.stock_analysis.core import analyze_fixed_time_lag
+from src.stock_analysis.core import analyze_fixed_time_lag, run_strategy_backtest
 from src.stock_analysis.plotting import plot_results, plot_comparison_chart
 from src.stock_analysis.data import download_stock_data
 from src.stock_analysis.cli import setup_arg_parser
@@ -189,6 +189,33 @@ def generate_comparison_plots(all_analysis_data: dict, ticker_list: list, output
                     output_folder=output_folder
                 )
 
+def run_backtest_mode(ticker_list_array: list, data_short: dict, args: argparse.Namespace):
+    """
+    Runs the backtesting mode for the given tickers.
+    """
+    print("\n======= 策略回測模式 (Strategy Backtest Mode) =======")
+    for ticker_list in ticker_list_array:
+        if not ticker_list:
+            continue
+        for ticker in ticker_list:
+            stock_data = data_short.get(ticker)
+            if stock_data is None or stock_data.empty:
+                print(f"\n--- {ticker}: 無法取得資料，跳過回測 (No data, skipping backtest) ---")
+                continue
+
+            result = run_strategy_backtest(stock_data, ticker, args)
+
+            if result:
+                print(f"\n======= 回測報告: {result['ticker']} =======")
+                print(f"策略: {result['entry_trail_pct']}% 進場追蹤, {result['exit_trail_pct']}% 出場追蹤")
+                print(f"部位: {result['shares']} 股")
+                print(f"買入觸發: ${result['buy_price']:.2f} (於 {result['buy_time'].strftime('%Y-%m-%d %H:%M')})")
+                print(f"賣出觸發: ${result['sell_price']:.2f} (於 {result['sell_time'].strftime('%Y-%m-%d %H:%M')})")
+                print("----------------------------------------")
+                print(f"每股獲利: ${result['sell_price'] - result['buy_price']:.2f}")
+                print(f"總損益: ${result['profit_and_loss']:.2f}")
+                print("======================================\n")
+
 def main():
     """
     Main function to run the stock analysis script.
@@ -289,9 +316,12 @@ def main():
         TICKER_SYMBOLS, args.interval_short, INTERVAL_LONG, start_date, end_date, period_log_str, args
     )
 
-    all_data, all_results = run_analysis_loops(
-        TICKER_LIST_ARRAY, data_short, data_long, args, summary_filename, args.interval_short
-    )
+    if args.strategy_backtest:
+        run_backtest_mode(TICKER_LIST_ARRAY, data_short, args)
+    else:
+        all_data, all_results = run_analysis_loops(
+            TICKER_LIST_ARRAY, data_short, data_long, args, summary_filename, args.interval_short
+        )
 
     print("\n======= 程式執行完畢 (Process Finished) =======")
 
