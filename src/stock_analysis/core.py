@@ -90,6 +90,7 @@ def run_strategy_backtest(stock_data: pd.DataFrame, ticker: str, args: argparse.
     buy_price = 0
     buy_time = None
     current_day = None
+    day_of_last_trade = None
 
     # --- Iterate through K-lines ---
     for index, row in stock_data.iterrows():
@@ -98,6 +99,9 @@ def run_strategy_backtest(stock_data: pd.DataFrame, ticker: str, args: argparse.
         bar_date = index.date()
 
         if state == 'LOOKING_TO_BUY':
+            if bar_date == day_of_last_trade:
+                continue
+
             # --- Daily Reset Logic ---
             if args.daily_trades and bar_date != current_day:
                 current_day = bar_date
@@ -154,6 +158,7 @@ def run_strategy_backtest(stock_data: pd.DataFrame, ticker: str, args: argparse.
                 trades.append(result)
 
                 # --- Reset for next trade ---
+                day_of_last_trade = bar_date
                 state = 'LOOKING_TO_BUY'
                 lowest_price_seen = current_low # Start tracking from current bar's low
                 highest_price_since_buy = float('-inf')
