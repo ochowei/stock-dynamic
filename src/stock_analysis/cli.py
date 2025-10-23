@@ -69,4 +69,30 @@ def setup_arg_parser():
         default=None,
         help='指定分析的結束日期 (格式: YYYY-MM-DD)。若提供此參數，將忽略 --period。'
     )
+
+    # --- Strategy Backtest Arguments ---
+    parser.add_argument(
+        '--strategy-backtest',
+        action='store_true',
+        help='啟用追蹤停損策略回測模式 (Enable the trailing stop strategy backtest mode).'
+    )
+    parser.add_argument(
+        '--entry-trail-pct',
+        type=float,
+        default=5.0,
+        help='追蹤停損買單的百分比 (Trailing percentage for the entry order).'
+    )
+    parser.add_argument(
+        '--exit-trail-pct',
+        type=float,
+        default=3.0,
+        help='追蹤停損賣單的百分比 (Trailing percentage for the exit order).'
+    )
+    parser.add_argument(
+        '--shares',
+        type=int,
+        default=100,
+        help='交易股數 (Number of shares to trade).'
+    )
+
     return parser
