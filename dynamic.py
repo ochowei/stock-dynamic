@@ -310,6 +310,11 @@ def setup_arg_parser():
         default='5m',
         help='設定分析用的短週期 K 線間隔 (e.g., "1m", "5m", "15m")'
     )
+    parser.add_argument(
+        '--save-data',
+        action='store_true',
+        help='儲存下載的原始 K 線資料與分析後的 DataFrame 為 CSV 檔案。'
+    )
     return parser
 
 def download_stock_data(tickers: list, interval_short: str, interval_long: str, start_date, end_date, period: str, args: argparse.Namespace):
@@ -388,6 +393,11 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
             except (KeyError, AttributeError):
                 stock_data_short_interval = pd.DataFrame()
 
+            if args.save_data and not stock_data_short_interval.empty:
+                raw_filename = f"output_data/{ticker_symbol}_{interval_short}_raw.csv"
+                stock_data_short_interval.to_csv(raw_filename)
+                print(f"原始資料已儲存至 (Raw data saved to): {raw_filename}")
+
             if stock_data_short_interval.empty:
                 print(f"*** {ticker_symbol} 沒有可分析的 {interval_short} 資料。跳過... ***")
                 # We don't continue here, to allow for long interval analysis if that data exists
@@ -422,6 +432,10 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
                         detailed_df['return'] = detailed_df['return'] / iteration_num
                     # --- NEW CODE END ---
 
+                    if args.save_data:
+                        analysis_filename = f"output_data/{ticker_symbol}_{holding_hours}hr_analysis.csv"
+                        detailed_df.to_csv(analysis_filename)
+                        print(f"分析資料已儲存至 (Analysis data saved to): {analysis_filename}")
 
                     # Initialize dicts if they don't exist
                     if holding_hours not in all_analysis_data_master:
@@ -508,6 +522,7 @@ def main():
     # 自動建立輸出資料夾 (Automatically create output folders)
     os.makedirs("output_img", exist_ok=True)
     os.makedirs("output_txt", exist_ok=True)
+    os.makedirs("output_data", exist_ok=True)
 
     if args.clean:
         print("Cleaning output directories...")
@@ -532,6 +547,17 @@ def main():
             except OSError as e:
                 print(f"Error removing file {f}: {e}")
         print(f"Removed {txt_count} .txt file(s) from output_txt/.")
+
+        # Clean data files
+        csv_files = glob.glob('output_data/*.csv')
+        csv_count = 0
+        for f in csv_files:
+            try:
+                os.remove(f)
+                csv_count += 1
+            except OSError as e:
+                print(f"Error removing file {f}: {e}")
+        print(f"Removed {csv_count} .csv file(s) from output_data/.")
 
     # Dynamic Date Calculation
     max_lookback_hours = args.base_hours * args.iterations
