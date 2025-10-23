@@ -3,7 +3,7 @@ import pytz
 import argparse
 import pandas as pd
 
-def download_stock_data(tickers: list, interval_short: str, interval_long: str, start_date, end_date, period: str, args: argparse.Namespace):
+def download_stock_data(tickers: list, interval_short: str, interval_long: str, start_date, end_date, period_log_str: str, args: argparse.Namespace):
     """
     Downloads stock data for the given tickers and intervals, and handles timezone conversion.
     """
@@ -11,7 +11,7 @@ def download_stock_data(tickers: list, interval_short: str, interval_long: str, 
     print(f"======= 開始批次下載資料 (Starting Batch Download) =======")
     print(f"Tickers: {tickers}")
     print(f"Intervals: {interval_short}, {interval_long}")
-    print(f"Period: {period}")
+    print(f"Analysis Period/Range: {period_log_str}")
     print(f"Pre/Post Market (Short): {args.prepost_short}")
     print(f"Pre/Post Market (Long): {args.prepost_long}")
     print("=======================================================\n")

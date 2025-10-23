@@ -240,10 +240,30 @@ def main():
     # Dynamic Date Calculation
     max_lookback_hours = args.base_hours * args.iterations
     max_lookback_timedelta = pd.Timedelta(hours=max_lookback_hours)
-    analysis_period_timedelta = pd.Timedelta(args.period)
-    total_download_timedelta = max_lookback_timedelta + analysis_period_timedelta
-    end_date = pd.Timestamp.now()
-    start_date = end_date - total_download_timedelta
+
+    if args.start_date and args.end_date:
+        # --- 模式 1：絕對日期 (Absolute Date Mode) ---
+        print(f"模式：使用絕對日期區間 (Mode: Using absolute date range)")
+        analysis_start_date = pd.Timestamp(args.start_date)
+        analysis_end_date = pd.Timestamp(args.end_date)
+
+        # 下載的開始日期需要包含回測所需的時間
+        start_date = analysis_start_date - max_lookback_timedelta
+        end_date = analysis_end_date
+
+        # 用於日誌記錄的週期字串
+        period_log_str = f"{args.start_date} to {args.end_date}"
+
+    else:
+        # --- 模式 2：相對日期 (Relative Date Mode - Current Logic) ---
+        print(f"模式：使用相對期間 (Mode: Using relative period '{args.period}')")
+        analysis_period_timedelta = pd.Timedelta(args.period)
+        total_download_timedelta = max_lookback_timedelta + analysis_period_timedelta
+        end_date = pd.Timestamp.now()
+        start_date = end_date - total_download_timedelta
+
+        # 用於日誌記錄的週期字串
+        period_log_str = args.period
 
     # 定義報告檔案路徑 (Define report file path) with base hours
     summary_filename = f"output_txt/summary_report_{args.base_hours}_{args.prepost_short}.txt"
@@ -266,7 +286,7 @@ def main():
 
     # Use the global TICKER_SYMBOLS for the download
     data_short, data_long = download_stock_data(
-        TICKER_SYMBOLS, args.interval_short, INTERVAL_LONG, start_date, end_date, args.period, args
+        TICKER_SYMBOLS, args.interval_short, INTERVAL_LONG, start_date, end_date, period_log_str, args
     )
 
     all_data, all_results = run_analysis_loops(

@@ -57,4 +57,16 @@ def setup_arg_parser():
         action='store_true',
         help='儲存下載的原始 K 線資料與分析後的 DataFrame 為 CSV 檔案。'
     )
+    parser.add_argument(
+        '--start-date',
+        type=str,
+        default=None,
+        help='指定分析的開始日期 (格式: YYYY-MM-DD)。若提供此參數，將忽略 --period。'
+    )
+    parser.add_argument(
+        '--end-date',
+        type=str,
+        default=None,
+        help='指定分析的結束日期 (格式: YYYY-MM-DD)。若提供此參數，將忽略 --period。'
+    )
     return parser
