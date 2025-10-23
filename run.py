@@ -10,6 +10,7 @@ import glob
 from src.stock_analysis.core import analyze_fixed_time_lag
 from src.stock_analysis.plotting import plot_results, plot_comparison_chart
 from src.stock_analysis.data import download_stock_data
+from src.stock_analysis.cli import setup_arg_parser
 
 
 def print_results(results: dict):
@@ -45,64 +46,7 @@ def latest_one_third(df: pd.DataFrame, divid: int) -> pd.DataFrame:
     take = max(1, math.ceil(n / divid))
     return df.tail(take).copy()
 
-def setup_arg_parser():
-    """
-    Sets up and returns the argument parser for command-line options.
-    """
-    parser = argparse.ArgumentParser(
-        description="執行 stock-dynamic 分析，可自訂分析週期。"
-    )
-    parser.add_argument(
-        "-p", "--period",
-        type=str,
-        default="5d",
-        help="指定 yfinance 下載資料的週期 (例如: '5d', '7d', '1mo')"
-    )
-    parser.add_argument(
-        "-b", "--base-hours",
-        type=float,
-        default=2,
-        help="設定分析的基底持有小時 (Base holding hours for analysis)"
-    )
-    parser.add_argument(
-        "-i", "--iterations",
-        type=int,
-        default=6,
-        help="設定分析迴圈的次數 (Number of iterations for the analysis loop)"
-    )
-    parser.add_argument(
-        "--plot-on-profit",
-        action="store_true",
-        help="僅在價值期望值 (Expected Return) > 0 時才儲存圖表。"
-    )
-    parser.add_argument(
-        "--clean",
-        action="store_true",
-        help="在執行分析前，清除 output_img/ 資料夾中的所有 .png 檔案 (Clear all .png files in output_img/ before execution)."
-    )
-    parser.add_argument(
-        '--prepost-short',
-        action='store_true',
-        help='下載短週期資料時包含盤前盤後數據 (Include pre/post market data for short interval download).'
-    )
-    parser.add_argument(
-        '--no-prepost-long',
-        dest='prepost_long',
-        action='store_false',
-        help='下載長週期資料時不包含盤前盤後數據 (Exclude pre/post market data for long interval download).'
-    )
-    parser.add_argument(
-        '--interval-short',
-        type=str,
-        default='5m',
-        help='設定分析用的短週期 K 線間隔 (e.g., "1m", "5m", "15m")'
-    )
-    parser.add_argument(
-        '--save-data',
-        action='store_true',
-        help='儲存下載的原始 K 線資料與分析後的 DataFrame 為 CSV 檔案。'
-    )
-    return parser
+# No content
 
 def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batch, args: argparse.Namespace, summary_filename: str, interval_short: str):
     """
@@ -317,6 +261,9 @@ def main():
         return
 
 
+    # Import configurations
+    from src.stock_analysis.config import TICKER_SYMBOLS, TICKER_LIST_ARRAY, INTERVAL_LONG
+
     # Use the global TICKER_SYMBOLS for the download
     data_short, data_long = download_stock_data(
         TICKER_SYMBOLS, args.interval_short, INTERVAL_LONG, start_date, end_date, args.period, args
@@ -327,70 +274,6 @@ def main():
     )
 
     print("\n======= 程式執行完畢 (Process Finished) =======")
-
-# --- 您可以在這裡修改共用參數 (You can modify parameters here) ---
-# 持有小時 (Holding Hours) - 兩項分析共用
-# 股票代碼 (Ticker Symbol) - 兩項分析共用
-TICKER_SYMBOLS_US_RARE_EARTH = ['MP','UUUU','UAMY']
-TICKER_SYMBOLS_US_DRONE = ['ONDS','RCAT'] #AVAV
-TICKER_SYMBOLS_US_NUCLEAR = ['LEU','SMR']
-TICKER_SYMBOLS_US_POWER = ['BE','VST']
-TICKER_SYMBOLS_US_BETTERY = ['EOSE','WWR']
-TICKER_SYMBOLS_US_AI_UP_1 = ['AMD','NVDA','TSM']
-TICKER_SYMBOLS_US_AI_UP_2 = ['ALAB','NVTS','POWI']
-TICKER_SYMBOLS_US_AI_MEDIUM = ['GOOG']
-TICKER_SYMBOLS_US_AI_DOWN_1 = ['ADBE','DUOL','FIG']
-TICKER_SYMBOLS_US_AI_DOWN_2 = ['GRAB','RBRK']
-
-TICKER_SYMBOLS_US_OTHER_STABLE = ['CIFR','SOFI','IBIT']
-TICKER_SYMBOLS_US_OTHER_GROWTH = ['IONQ','TMDX','TSLA']
-TICKER_SYMBOLS_US_OTHER_ETF = ['BND','GLD','MGK','SIVR','VOO']
-
-TICKER_SYMBOLS_US_OTHER = []
-
-TICKER_LIST_ARRAY = [
-    TICKER_SYMBOLS_US_RARE_EARTH,
-    TICKER_SYMBOLS_US_DRONE,
-    TICKER_SYMBOLS_US_OTHER,
-    TICKER_SYMBOLS_US_NUCLEAR,
-    TICKER_SYMBOLS_US_POWER,
-    TICKER_SYMBOLS_US_BETTERY,
-    TICKER_SYMBOLS_US_AI_UP_1,
-    TICKER_SYMBOLS_US_AI_UP_2,
-    TICKER_SYMBOLS_US_AI_MEDIUM,
-    TICKER_SYMBOLS_US_AI_DOWN_1,
-    TICKER_SYMBOLS_US_AI_DOWN_2,
-    TICKER_SYMBOLS_US_OTHER_STABLE,
-    TICKER_SYMBOLS_US_OTHER_GROWTH,
-    TICKER_SYMBOLS_US_OTHER_ETF
-]
-
-TICKER_SYMBOLS_US = TICKER_SYMBOLS_US_RARE_EARTH + \
-    TICKER_SYMBOLS_US_DRONE + \
-    TICKER_SYMBOLS_US_OTHER + \
-    TICKER_SYMBOLS_US_NUCLEAR + \
-    TICKER_SYMBOLS_US_POWER + \
-    TICKER_SYMBOLS_US_BETTERY + \
-    TICKER_SYMBOLS_US_AI_UP_1 + \
-    TICKER_SYMBOLS_US_AI_UP_2 + \
-    TICKER_SYMBOLS_US_AI_MEDIUM + \
-    TICKER_SYMBOLS_US_AI_DOWN_1 + \
-    TICKER_SYMBOLS_US_AI_DOWN_2 + \
-    TICKER_SYMBOLS_US_OTHER_STABLE + \
-    TICKER_SYMBOLS_US_OTHER_GROWTH + \
-    TICKER_SYMBOLS_US_OTHER_ETF
-
-TICKER_SYMBOLS_TW = ['00635U.TW','2603.TW']
-TICKER_SYMBOLS = TICKER_SYMBOLS_US
-
-
-# --- 參數定義 (Parameter Definitions) ---
-# (保留儲存格 5, 6, 7/8 中的所有參數定義)
-
-# 分析 2 & 3 參數
-INTERVAL_LONG = '60m'
-# (註：原儲存格 7 和 7/8 都使用 '60m' 和 '5d'，我們在批次下載時使用)
-
 
 # --- 執行主程式 (Run Main Program) ---
 if __name__ == "__main__":
