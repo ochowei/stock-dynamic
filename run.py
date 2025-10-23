@@ -208,11 +208,20 @@ def run_backtest_mode(ticker_list_array: list, data_short: dict, args: argparse.
             if result:
                 print(f"\n======= 回測報告: {result['ticker']} =======")
                 print(f"策略: {result['entry_trail_pct']}% 進場追蹤, {result['exit_trail_pct']}% 出場追蹤")
-                print(f"部位: {result['shares']} 股")
+
+                # --- NEW: Conditional print for Budget vs Shares ---
+                if result['budget']:
+                    print(f"預算 (Budget): ${result['budget']:.2f}")
+                    print(f"部位 (Shares): {result['shares']} 股 (基於預算計算)")
+                else:
+                    print(f"部位 (Shares): {result['shares']} 股 (固定)")
+                # --- END NEW ---
+
                 print(f"買入觸發: ${result['buy_price']:.2f} (於 {result['buy_time'].strftime('%Y-%m-%d %H:%M')})")
                 print(f"賣出觸發: ${result['sell_price']:.2f} (於 {result['sell_time'].strftime('%Y-%m-%d %H:%M')})")
                 print("----------------------------------------")
                 print(f"每股獲利: ${result['sell_price'] - result['buy_price']:.2f}")
+                print(f"每股獲利率 (Profit %): {result['profit_pct']:.2%}") # <-- Add this line
                 print(f"總損益: ${result['profit_and_loss']:.2f}")
                 print("======================================\n")
 

@@ -125,17 +125,29 @@ def run_strategy_backtest(stock_data: pd.DataFrame, ticker: str, args: argparse.
 
     # --- Result Compilation ---
     if buy_price > 0 and sell_price > 0:
-        pnl = (sell_price - buy_price) * args.shares
+
+        # --- NEW: Calculate shares_to_trade ---
+        if args.budget:
+            shares_to_trade = args.budget // buy_price # Use floor division for whole shares
+        else:
+            shares_to_trade = args.shares
+        # --- END NEW ---
+
+        pnl = (sell_price - buy_price) * shares_to_trade # Use shares_to_trade
+        profit_pct = (sell_price - buy_price) / buy_price # From Part 1
+
         result = {
             'ticker': ticker,
             'buy_price': buy_price,
             'buy_time': buy_time,
             'sell_price': sell_price,
             'sell_time': sell_time,
-            'shares': args.shares,
+            'shares': shares_to_trade, # Store the calculated shares
             'profit_and_loss': pnl,
+            'profit_pct': profit_pct,
             'entry_trail_pct': args.entry_trail_pct,
-            'exit_trail_pct': args.exit_trail_pct
+            'exit_trail_pct': args.exit_trail_pct,
+            'budget': args.budget # Store budget info
         }
         return result
     else:

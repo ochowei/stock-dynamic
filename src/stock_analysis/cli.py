@@ -94,5 +94,11 @@ def setup_arg_parser():
         default=100,
         help='交易股數 (Number of shares to trade).'
     )
+    parser.add_argument(
+        '--budget',
+        type=float,
+        default=None,
+        help='指定回測的總預算 (美元)。若提供此參數，將忽略 --shares。 (Total budget in USD. If provided, --shares is ignored.)'
+    )
 
     return parser
