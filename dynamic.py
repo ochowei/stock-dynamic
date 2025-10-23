@@ -400,6 +400,23 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
                 )
 
                 if analysis_results and detailed_df is not None and not detailed_df.empty:
+                    # --- NEW CODE START ---
+                    # 取得當前的迭代次數 (iteration number)
+                    iteration_num = (x + 1)
+
+                    # 1. 正規化「平均期望報酬率」 (analysis_results['expected_return'])
+                    # 這個值會用於 summary report 和 plot 上的平均線
+                    if 'expected_return' in analysis_results:
+                        analysis_results['expected_return'] = analysis_results['expected_return'] / iteration_num
+
+                    # 2. 正規化「每筆交易的報酬率」 (detailed_df['return'])
+                    # 這個 DataFrame column 會用於繪製主圖表 (plot_results) 和
+                    # 跨股票比較圖 (plot_comparison_chart)
+                    if 'return' in detailed_df.columns:
+                        detailed_df['return'] = detailed_df['return'] / iteration_num
+                    # --- NEW CODE END ---
+
+
                     # Initialize dicts if they don't exist
                     if holding_hours not in all_analysis_data_master:
                         all_analysis_data_master[holding_hours] = {}
@@ -518,8 +535,8 @@ def main():
     end_date = pd.Timestamp.now()
     start_date = end_date - total_download_timedelta
 
-    # 定義報告檔案路徑 (Define report file path)
-    summary_filename = "output_txt/summary_report.txt"
+    # 定義報告檔案路徑 (Define report file path) with base hours
+    summary_filename = f"output_txt/summary_report_{args.base_hours}_{args.prepost_short}.txt"
 
     # 在迴圈開始前，清空檔案並寫入標頭 (Before the loop, clear the file and write the header)
     try:
@@ -560,8 +577,8 @@ TICKER_SYMBOLS_US_AI_DOWN_1 = ['ADBE','DUOL','FIG']
 TICKER_SYMBOLS_US_AI_DOWN_2 = ['GRAB','RBRK']
 
 TICKER_SYMBOLS_US_OTHER_STABLE = ['CIFR','SOFI','IBIT']
-TICKER_SYMBOLS_US_OTHER_GROWTH = ['IONQ','TMDX',]
-TICKER_SYMBOLS_US_OTHER_ETF = ['BND','GLD','MGK','VOO']
+TICKER_SYMBOLS_US_OTHER_GROWTH = ['IONQ','TMDX','TSLA']
+TICKER_SYMBOLS_US_OTHER_ETF = ['BND','GLD','MGK','SIVR','VOO']
 
 TICKER_SYMBOLS_US_OTHER = []
 
