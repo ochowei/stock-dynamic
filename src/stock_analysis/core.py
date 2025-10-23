@@ -76,35 +76,43 @@ import argparse
 
 def run_strategy_backtest(stock_data: pd.DataFrame, ticker: str, args: argparse.Namespace):
     """
-    Simulates a trailing stop trading strategy.
+    Simulates a trailing stop trading strategy, allowing for multiple trades.
     """
     if stock_data.empty:
         print(f"No data for {ticker}, skipping backtest.")
-        return None
+        return []
 
+    trades = []
     # --- State Machine Initialization ---
     state = 'LOOKING_TO_BUY'
     lowest_price_seen = float('inf')
     highest_price_since_buy = float('-inf')
     buy_price = 0
-    sell_price = 0
     buy_time = None
-    sell_time = None
+    current_day = None
 
     # --- Iterate through K-lines ---
     for index, row in stock_data.iterrows():
         current_low = row['Low']
         current_high = row['High']
+        bar_date = index.date()
 
         if state == 'LOOKING_TO_BUY':
-            if current_low < lowest_price_seen:
+            # --- Daily Reset Logic ---
+            if args.daily_trades and bar_date != current_day:
+                current_day = bar_date
+                lowest_price_seen = current_low # Reset on a new day
+            # --- End Daily Reset Logic ---
+            elif current_low < lowest_price_seen:
                 lowest_price_seen = current_low
+
 
             buy_trigger_price = lowest_price_seen * (1 + args.entry_trail_pct / 100)
 
             if current_high >= buy_trigger_price:
                 buy_price = buy_trigger_price
                 buy_time = index
+                # Reset the highest price seen since the new buy
                 highest_price_since_buy = buy_price
                 state = 'IN_POSITION'
                 print(f"[{ticker}] BUY triggered at ${buy_price:.2f} on {buy_time}")
@@ -119,37 +127,41 @@ def run_strategy_backtest(stock_data: pd.DataFrame, ticker: str, args: argparse.
             if current_low <= sell_trigger_price:
                 sell_price = sell_trigger_price
                 sell_time = index
-                state = 'FINISHED'
                 print(f"[{ticker}] SELL triggered at ${sell_price:.2f} on {sell_time}")
-                break # Exit after the first full trade
 
-    # --- Result Compilation ---
-    if buy_price > 0 and sell_price > 0:
+                # --- Result Compilation for this trade ---
+                if args.budget:
+                    shares_to_trade = args.budget // buy_price
+                else:
+                    shares_to_trade = args.shares
 
-        # --- NEW: Calculate shares_to_trade ---
-        if args.budget:
-            shares_to_trade = args.budget // buy_price # Use floor division for whole shares
-        else:
-            shares_to_trade = args.shares
-        # --- END NEW ---
+                pnl = (sell_price - buy_price) * shares_to_trade
+                profit_pct = (sell_price - buy_price) / buy_price
 
-        pnl = (sell_price - buy_price) * shares_to_trade # Use shares_to_trade
-        profit_pct = (sell_price - buy_price) / buy_price # From Part 1
+                result = {
+                    'ticker': ticker,
+                    'buy_price': buy_price,
+                    'buy_time': buy_time,
+                    'sell_price': sell_price,
+                    'sell_time': sell_time,
+                    'shares': shares_to_trade,
+                    'profit_and_loss': pnl,
+                    'profit_pct': profit_pct,
+                    'entry_trail_pct': args.entry_trail_pct,
+                    'exit_trail_pct': args.exit_trail_pct,
+                    'budget': args.budget
+                }
+                trades.append(result)
 
-        result = {
-            'ticker': ticker,
-            'buy_price': buy_price,
-            'buy_time': buy_time,
-            'sell_price': sell_price,
-            'sell_time': sell_time,
-            'shares': shares_to_trade, # Store the calculated shares
-            'profit_and_loss': pnl,
-            'profit_pct': profit_pct,
-            'entry_trail_pct': args.entry_trail_pct,
-            'exit_trail_pct': args.exit_trail_pct,
-            'budget': args.budget # Store budget info
-        }
-        return result
-    else:
+                # --- Reset for next trade ---
+                state = 'LOOKING_TO_BUY'
+                lowest_price_seen = current_low # Start tracking from current bar's low
+                highest_price_since_buy = float('-inf')
+                buy_price = 0
+                buy_time = None
+
+
+    if not trades:
         print(f"[{ticker}] No complete trade was executed during the backtest period.")
-        return None
+
+    return trades

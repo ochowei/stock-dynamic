@@ -100,5 +100,10 @@ def setup_arg_parser():
         default=None,
         help='指定回測的總預算 (美元)。若提供此參數，將忽略 --shares。 (Total budget in USD. If provided, --shares is ignored.)'
     )
+    parser.add_argument(
+        '--daily-trades',
+        action='store_true',
+        help='在策略回測中，允許每天重新建立進場條件單 (Allow re-initiating entry conditions daily in strategy backtest mode).'
+    )
 
     return parser

@@ -203,26 +203,26 @@ def run_backtest_mode(ticker_list_array: list, data_short: dict, args: argparse.
                 print(f"\n--- {ticker}: 無法取得資料，跳過回測 (No data, skipping backtest) ---")
                 continue
 
-            result = run_strategy_backtest(stock_data, ticker, args)
+            results = run_strategy_backtest(stock_data, ticker, args)
 
-            if result:
-                print(f"\n======= 回測報告: {result['ticker']} =======")
-                print(f"策略: {result['entry_trail_pct']}% 進場追蹤, {result['exit_trail_pct']}% 出場追蹤")
+            if results:
+                print(f"\n======= 回測報告: {ticker} (共 {len(results)} 筆交易) =======")
+                for i, result in enumerate(results):
+                    print(f"\n--- 交易 #{i+1} ---")
+                    print(f"策略: {result['entry_trail_pct']}% 進場追蹤, {result['exit_trail_pct']}% 出場追蹤")
 
-                # --- NEW: Conditional print for Budget vs Shares ---
-                if result['budget']:
-                    print(f"預算 (Budget): ${result['budget']:.2f}")
-                    print(f"部位 (Shares): {result['shares']} 股 (基於預算計算)")
-                else:
-                    print(f"部位 (Shares): {result['shares']} 股 (固定)")
-                # --- END NEW ---
+                    if result['budget']:
+                        print(f"預算 (Budget): ${result['budget']:.2f}")
+                        print(f"部位 (Shares): {result['shares']} 股 (基於預算計算)")
+                    else:
+                        print(f"部位 (Shares): {result['shares']} 股 (固定)")
 
-                print(f"買入觸發: ${result['buy_price']:.2f} (於 {result['buy_time'].strftime('%Y-%m-%d %H:%M')})")
-                print(f"賣出觸發: ${result['sell_price']:.2f} (於 {result['sell_time'].strftime('%Y-%m-%d %H:%M')})")
-                print("----------------------------------------")
-                print(f"每股獲利: ${result['sell_price'] - result['buy_price']:.2f}")
-                print(f"每股獲利率 (Profit %): {result['profit_pct']:.2%}") # <-- Add this line
-                print(f"總損益: ${result['profit_and_loss']:.2f}")
+                    print(f"買入觸發: ${result['buy_price']:.2f} (於 {result['buy_time'].strftime('%Y-%m-%d %H:%M')})")
+                    print(f"賣出觸發: ${result['sell_price']:.2f} (於 {result['sell_time'].strftime('%Y-%m-%d %H:%M')})")
+                    print("----------------------------------------")
+                    print(f"每股獲利: ${result['sell_price'] - result['buy_price']:.2f}")
+                    print(f"每股獲利率 (Profit %): {result['profit_pct']:.2%}")
+                    print(f"總損益: ${result['profit_and_loss']:.2f}")
                 print("======================================\n")
 
 def main():
