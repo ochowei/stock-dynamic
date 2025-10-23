@@ -90,6 +90,7 @@ def run_strategy_backtest(stock_data: pd.DataFrame, ticker: str, args: argparse.
     buy_price = 0
     buy_time = None
     current_day = None
+    day_of_last_trade = None
 
     # --- Iterate through K-lines ---
     for index, row in stock_data.iterrows():
@@ -98,6 +99,11 @@ def run_strategy_backtest(stock_data: pd.DataFrame, ticker: str, args: argparse.
         bar_date = index.date()
 
         if state == 'LOOKING_TO_BUY':
+            # --- Skip trading for the rest of the day after a sale ---
+            if bar_date == day_of_last_trade:
+                # print(f"[{ticker}] Skipping {bar_date}, a trade was already completed today.")
+                continue
+
             # --- Daily Reset Logic ---
             if args.daily_trades and bar_date != current_day:
                 current_day = bar_date
@@ -152,6 +158,7 @@ def run_strategy_backtest(stock_data: pd.DataFrame, ticker: str, args: argparse.
                     'budget': args.budget
                 }
                 trades.append(result)
+                day_of_last_trade = bar_date
 
                 # --- Reset for next trade ---
                 state = 'LOOKING_TO_BUY'
