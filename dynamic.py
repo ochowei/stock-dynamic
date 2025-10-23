@@ -304,6 +304,12 @@ def setup_arg_parser():
         action='store_false',
         help='下載長週期資料時不包含盤前盤後數據 (Exclude pre/post market data for long interval download).'
     )
+    parser.add_argument(
+        '--interval-short',
+        type=str,
+        default='5m',
+        help='設定分析用的短週期 K 線間隔 (e.g., "1m", "5m", "15m")'
+    )
     return parser
 
 def download_stock_data(tickers: list, interval_short: str, interval_long: str, start_date, end_date, period: str, args: argparse.Namespace):
@@ -359,7 +365,7 @@ def download_stock_data(tickers: list, interval_short: str, interval_long: str, 
 
     return data_short_interval_batch, data_long_interval_batch
 
-def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batch, args: argparse.Namespace, summary_filename: str):
+def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batch, args: argparse.Namespace, summary_filename: str, interval_short: str):
     """
     Runs the main analysis loops through all ticker lists and holding periods.
     """
@@ -383,19 +389,19 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
                 stock_data_short_interval = pd.DataFrame()
 
             if stock_data_short_interval.empty:
-                print(f"*** {ticker_symbol} 沒有可分析的 {INTERVAL_SHORT} 資料。跳過... ***")
+                print(f"*** {ticker_symbol} 沒有可分析的 {interval_short} 資料。跳過... ***")
                 # We don't continue here, to allow for long interval analysis if that data exists
 
             for x in range(args.iterations):
                 holding_hours = args.base_hours * (x + 1)
-                print(f"--- 分析 ({INTERVAL_SHORT} K線, {holding_hours} 小時) ---")
+                print(f"--- 分析 ({interval_short} K線, {holding_hours} 小時) ---")
 
                 stock_data_to_analyze = latest_one_third(stock_data_short_interval, args.iterations / (x + 1))
 
                 analysis_results, detailed_df = analyze_fixed_time_lag(
                     stock_data=stock_data_to_analyze,
                     ticker=ticker_symbol,
-                    interval=INTERVAL_SHORT,
+                    interval=interval_short,
                     holding_hours=holding_hours
                 )
 
@@ -553,11 +559,11 @@ def main():
 
     # Use the global TICKER_SYMBOLS for the download
     data_short, data_long = download_stock_data(
-        TICKER_SYMBOLS, INTERVAL_SHORT, INTERVAL_LONG, start_date, end_date, args.period, args
+        TICKER_SYMBOLS, args.interval_short, INTERVAL_LONG, start_date, end_date, args.period, args
     )
 
     all_data, all_results = run_analysis_loops(
-        TICKER_LIST_ARRAY, data_short, data_long, args, summary_filename
+        TICKER_LIST_ARRAY, data_short, data_long, args, summary_filename, args.interval_short
     )
 
     print("\n======= 程式執行完畢 (Process Finished) =======")
@@ -620,9 +626,6 @@ TICKER_SYMBOLS = TICKER_SYMBOLS_US
 
 # --- 參數定義 (Parameter Definitions) ---
 # (保留儲存格 5, 6, 7/8 中的所有參數定義)
-
-# 分析 1 參數
-INTERVAL_SHORT = '5m'
 
 # 分析 2 & 3 參數
 INTERVAL_LONG = '60m'
