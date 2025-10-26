@@ -8,6 +8,12 @@ def setup_arg_parser():
         description="執行 stock-dynamic 分析，可自訂分析週期。"
     )
     parser.add_argument(
+        "-t", "--tickers",
+        nargs='+',
+        default=None,
+        help="Specify one or more ticker symbols to analyze, overriding the config file."
+    )
+    parser.add_argument(
         "-p", "--period",
         type=str,
         default="5d",
