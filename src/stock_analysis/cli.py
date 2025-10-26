@@ -69,6 +69,13 @@ def setup_arg_parser():
         default=None,
         help='指定分析的結束日期 (格式: YYYY-MM-DD)。若提供此參數，將忽略 --period。'
     )
+    parser.add_argument(
+        '--time-anchor',
+        type=str,
+        default='start',
+        choices=['start', 'end'],
+        help="Set the time anchor for analysis: 'start' (X-axis is buy time) or 'end' (X-axis is sell time)."
+    )
 
     # --- Strategy Backtest Arguments ---
     parser.add_argument(
