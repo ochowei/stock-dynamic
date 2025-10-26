@@ -90,7 +90,8 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
                     stock_data=stock_data_to_analyze,
                     ticker=ticker_symbol,
                     interval=interval_short,
-                    holding_hours=holding_hours
+                    holding_hours=holding_hours,
+                    time_anchor=args.time_anchor
                 )
 
                 if analysis_results and detailed_df is not None and not detailed_df.empty:

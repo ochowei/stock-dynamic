@@ -1,7 +1,7 @@
 import pandas as pd
 import re
 
-def analyze_fixed_time_lag(stock_data: pd.DataFrame, ticker: str, interval: str, holding_hours: float):
+def analyze_fixed_time_lag(stock_data: pd.DataFrame, ticker: str, interval: str, holding_hours: float, time_anchor: str = 'start'):
     """
     分析一檔股票在給定數據下，與 {holding_hours} 小時前的 K 線收盤價的價差。
     Analyzes the price difference of a stock based on provided data,
@@ -41,8 +41,12 @@ def analyze_fixed_time_lag(stock_data: pd.DataFrame, ticker: str, interval: str,
     # print("-" * 30)
 
     # --- 核心計算 (Core Calculation) ---
-    stock_data['P_buy'] = stock_data['Close']
-    stock_data['P_sell'] = stock_data['Close'].shift(-lag_periods)
+    if time_anchor == 'end':
+        stock_data['P_buy'] = stock_data['Close'].shift(lag_periods)
+        stock_data['P_sell'] = stock_data['Close']
+    else:  # Default to 'start'
+        stock_data['P_buy'] = stock_data['Close']
+        stock_data['P_sell'] = stock_data['Close'].shift(-lag_periods)
 
     analysis_df = stock_data.dropna().copy()
 
