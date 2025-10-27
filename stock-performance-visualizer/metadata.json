@@ -1,0 +1,5 @@
+{
+  "name": "Stock Performance Visualizer",
+  "description": "An advanced dashboard for visualizing stock market data, including price, volume, and technical indicators. Users can analyze performance metrics through interactive charts and a detailed data table.",
+  "requestFramePermissions": []
+}
