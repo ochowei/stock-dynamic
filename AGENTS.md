@@ -21,6 +21,7 @@ To ensure consistency and maintainability, please adhere to the following guidel
 *   **Core Logic**: All core calculation logic, especially `pandas` DataFrame manipulations for financial analysis, should be placed in `src/stock_analysis/core.py`.
 *   **Plotting Logic**: All changes related to data visualization (e.g., colors, labels, chart types, saving figures) should be implemented in `src/stock_analysis/plotting.py`.
 *   **Code and Commenting Consistency**: Maintain consistency with the existing codebase. Where appropriate, provide both English and Traditional Chinese comments to ensure clarity for all contributors.
+*   **Unit Testing**: 在實作 Python 的 function 或是模組時，應盡可能包含 unit-test。
 
 ## 3. High-Level Goals
 
