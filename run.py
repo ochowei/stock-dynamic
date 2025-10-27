@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import math
@@ -15,9 +14,8 @@ from src.stock_analysis.cli import setup_arg_parser
 
 def print_results(results: dict):
     """格式化並印出中英分析結果"""
-    if not results: return
-
-    holding_hours = results['holding_hours']
+    if not results:
+        return
 
     # print(f"======= {results['ticker']} 股票 {holding_hours} 小時持有期分析結果 ({holding_hours}-Hour Holding Period Analysis) =======")
     # print(f"總有效交易次數 (Total Trades): {results['total_trades']:,}")
@@ -39,6 +37,7 @@ def print_results(results: dict):
     # print("=" * 70)
     # print("註 (Note): 此分析未考慮交易手續費或滑價成本 (This analysis excludes commissions and slippage.)")
 
+
 def latest_one_third(df: pd.DataFrame, divid: int) -> pd.DataFrame:
     if df is None or df.empty:
         return df
@@ -46,13 +45,21 @@ def latest_one_third(df: pd.DataFrame, divid: int) -> pd.DataFrame:
     take = max(1, math.ceil(n / divid))
     return df.tail(take).copy()
 
+
 # No content
 
-def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batch, args: argparse.Namespace, summary_filename: str, interval_short: str):
+
+def run_analysis_loops(
+    ticker_list_array: list,
+    data_short_batch,
+    data_long_batch,
+    args: argparse.Namespace,
+    summary_filename: str,
+    interval_short: str,
+):
     """
     Runs the main analysis loops through all ticker lists and holding periods.
     """
-
 
     for ticker_list in ticker_list_array:
         if not ticker_list:
@@ -62,9 +69,9 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
         all_summary_results_master = {}
 
         for ticker_symbol in ticker_list:
-            print(f"\n=======================================================")
+            print("\n=======================================================")
             print(f"======= 正在分析 (Now Analyzing): {ticker_symbol} =======")
-            print(f"=======================================================\n")
+            print("=======================================================\n")
 
             try:
                 stock_data_short_interval = data_short_batch[ticker_symbol].dropna()
@@ -77,44 +84,56 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
                 print(f"原始資料已儲存至 (Raw data saved to): {raw_filename}")
 
             if stock_data_short_interval.empty:
-                print(f"*** {ticker_symbol} 沒有可分析的 {interval_short} 資料。跳過... ***")
+                print(
+                    f"*** {ticker_symbol} 沒有可分析的 {interval_short} 資料。跳過... ***"
+                )
                 # We don't continue here, to allow for long interval analysis if that data exists
 
             for x in range(args.iterations):
                 holding_hours = args.base_hours * (x + 1)
                 print(f"--- 分析 ({interval_short} K線, {holding_hours} 小時) ---")
 
-                stock_data_to_analyze = latest_one_third(stock_data_short_interval, args.iterations / (x + 1))
+                stock_data_to_analyze = latest_one_third(
+                    stock_data_short_interval, args.iterations / (x + 1)
+                )
 
                 analysis_results, detailed_df = analyze_fixed_time_lag(
                     stock_data=stock_data_to_analyze,
                     ticker=ticker_symbol,
                     interval=interval_short,
                     holding_hours=holding_hours,
-                    time_anchor=args.time_anchor
+                    time_anchor=args.time_anchor,
                 )
 
-                if analysis_results and detailed_df is not None and not detailed_df.empty:
+                if (
+                    analysis_results
+                    and detailed_df is not None
+                    and not detailed_df.empty
+                ):
                     # --- NEW CODE START ---
                     # 取得當前的迭代次數 (iteration number)
-                    iteration_num = (x + 1)
+                    iteration_num = x + 1
 
                     # 1. 正規化「平均期望報酬率」 (analysis_results['expected_return'])
                     # 這個值會用於 summary report 和 plot 上的平均線
-                    if 'expected_return' in analysis_results:
-                        analysis_results['expected_return'] = analysis_results['expected_return'] / iteration_num
+                    if "expected_return" in analysis_results:
+                        analysis_results["expected_return"] = (
+                            analysis_results["expected_return"] / iteration_num
+                        )
 
                     # 2. 正規化「每筆交易的報酬率」 (detailed_df['return'])
                     # 這個 DataFrame column 會用於繪製主圖表 (plot_results) 和
                     # 跨股票比較圖 (plot_comparison_chart)
-                    if 'return' in detailed_df.columns:
-                        detailed_df['return'] = detailed_df['return'] / iteration_num
+                    if "return" in detailed_df.columns:
+                        detailed_df["return"] = detailed_df["return"] / iteration_num
                     # --- NEW CODE END ---
 
                     if args.save_data:
                         analysis_filename = f"output_data/{ticker_symbol}_{holding_hours}hr_analysis.csv"
                         detailed_df.to_csv(analysis_filename)
-                        print(f"分析資料已儲存至 (Analysis data saved to): {analysis_filename}")
+                        print(
+                            f"分析資料已儲存至 (Analysis data saved to): {analysis_filename}"
+                        )
 
                     # Initialize dicts if they don't exist
                     if holding_hours not in all_analysis_data_master:
@@ -125,7 +144,9 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
                     all_analysis_data_master[holding_hours][ticker_symbol] = detailed_df
                     all_summary_results_master[holding_hours].append(analysis_results)
 
-                    if not args.plot_on_profit or (args.plot_on_profit and analysis_results['expected_return'] > 0):
+                    if not args.plot_on_profit or (
+                        args.plot_on_profit and analysis_results["expected_return"] > 0
+                    ):
                         print_results(analysis_results)
                         plot_results(analysis_results, detailed_df)
 
@@ -133,9 +154,10 @@ def run_analysis_loops(ticker_list_array: list, data_short_batch, data_long_batc
 
         generate_summary_reports(all_summary_results_master, summary_filename)
 
-        generate_comparison_plots(all_analysis_data_master, ticker_list, 'output_img')
+        generate_comparison_plots(all_analysis_data_master, ticker_list, "output_img")
 
     return all_analysis_data_master, all_summary_results_master
+
 
 def generate_summary_reports(all_summary_results_grouped: dict, summary_filename: str):
     """
@@ -143,7 +165,7 @@ def generate_summary_reports(all_summary_results_grouped: dict, summary_filename
     """
     report_header = "\n======= 總結：各持有週期報酬率排行 (Summary: Return Ranking by Holding Period) ======="
     print(report_header)
-    with open(summary_filename, 'a', encoding='utf-8') as f:
+    with open(summary_filename, "a", encoding="utf-8") as f:
         f.write(report_header + "\n")
 
         for holding_hours in sorted(all_summary_results_grouped.keys()):
@@ -152,11 +174,17 @@ def generate_summary_reports(all_summary_results_grouped: dict, summary_filename
             if not results_list:
                 continue
 
-            period_header = f"\n--- 持有 {holding_hours} 小時 (Holding {holding_hours} Hours) ---"
+            period_header = (
+                f"\n--- 持有 {holding_hours} 小時 (Holding {holding_hours} Hours) ---"
+            )
             print(period_header)
             f.write(period_header + "\n")
 
-            sorted_list = sorted(results_list, key=lambda r: r.get('expected_return', -float('inf')), reverse=True)
+            sorted_list = sorted(
+                results_list,
+                key=lambda r: r.get("expected_return", -float("inf")),
+                reverse=True,
+            )
 
             if not sorted_list:
                 no_data_msg = "  (無有效資料 No valid data)"
@@ -169,7 +197,10 @@ def generate_summary_reports(all_summary_results_grouped: dict, summary_filename
                 print(result_line)
                 f.write(result_line + "\n")
 
-def generate_comparison_plots(all_analysis_data: dict, ticker_list: list, output_folder: str):
+
+def generate_comparison_plots(
+    all_analysis_data: dict, ticker_list: list, output_folder: str
+):
     """
     Generates comparison plot charts for each holding period.
     """
@@ -181,16 +212,21 @@ def generate_comparison_plots(all_analysis_data: dict, ticker_list: list, output
     for holding_hours, ticker_data_map in all_analysis_data.items():
         if ticker_data_map:
             # Plot the first 5 tickers from the overall list that are present in the current data map
-            tickers_to_plot = [t for t in all_tickers_in_run if t in ticker_data_map][:5]
+            tickers_to_plot = [t for t in all_tickers_in_run if t in ticker_data_map][
+                :5
+            ]
             if tickers_to_plot:
                 plot_comparison_chart(
                     data_map=ticker_data_map,
                     holding_hours=holding_hours,
                     tickers_to_plot=tickers_to_plot,
-                    output_folder=output_folder
+                    output_folder=output_folder,
                 )
 
-def run_backtest_mode(ticker_list_array: list, data_short: dict, args: argparse.Namespace):
+
+def run_backtest_mode(
+    ticker_list_array: list, data_short: dict, args: argparse.Namespace
+):
     """
     Runs the backtesting mode for the given tickers.
     """
@@ -201,30 +237,43 @@ def run_backtest_mode(ticker_list_array: list, data_short: dict, args: argparse.
         for ticker in ticker_list:
             stock_data = data_short.get(ticker)
             if stock_data is None or stock_data.empty:
-                print(f"\n--- {ticker}: 無法取得資料，跳過回測 (No data, skipping backtest) ---")
+                print(
+                    f"\n--- {ticker}: 無法取得資料，跳過回測 (No data, skipping backtest) ---"
+                )
                 continue
 
             results = run_strategy_backtest(stock_data, ticker, args)
 
             if results:
-                print(f"\n======= 回測報告: {ticker} (共 {len(results)} 筆交易) =======")
+                print(
+                    f"\n======= 回測報告: {ticker} (共 {len(results)} 筆交易) ======="
+                )
                 for i, result in enumerate(results):
-                    print(f"\n--- 交易 #{i+1} ---")
-                    print(f"策略: {result['entry_trail_pct']}% 進場追蹤, {result['exit_trail_pct']}% 出場追蹤")
+                    print(f"\n--- 交易 #{i + 1} ---")
+                    print(
+                        f"策略: {result['entry_trail_pct']}% 進場追蹤, {result['exit_trail_pct']}% 出場追蹤"
+                    )
 
-                    if result['budget']:
+                    if result["budget"]:
                         print(f"預算 (Budget): ${result['budget']:.2f}")
                         print(f"部位 (Shares): {result['shares']} 股 (基於預算計算)")
                     else:
                         print(f"部位 (Shares): {result['shares']} 股 (固定)")
 
-                    print(f"買入觸發: ${result['buy_price']:.2f} (於 {result['buy_time'].strftime('%Y-%m-%d %H:%M')})")
-                    print(f"賣出觸發: ${result['sell_price']:.2f} (於 {result['sell_time'].strftime('%Y-%m-%d %H:%M')})")
+                    print(
+                        f"買入觸發: ${result['buy_price']:.2f} (於 {result['buy_time'].strftime('%Y-%m-%d %H:%M')})"
+                    )
+                    print(
+                        f"賣出觸發: ${result['sell_price']:.2f} (於 {result['sell_time'].strftime('%Y-%m-%d %H:%M')})"
+                    )
                     print("----------------------------------------")
-                    print(f"每股獲利: ${result['sell_price'] - result['buy_price']:.2f}")
+                    print(
+                        f"每股獲利: ${result['sell_price'] - result['buy_price']:.2f}"
+                    )
                     print(f"每股獲利率 (Profit %): {result['profit_pct']:.2%}")
                     print(f"總損益: ${result['profit_and_loss']:.2f}")
                 print("======================================\n")
+
 
 def main():
     """
@@ -242,7 +291,7 @@ def main():
     if args.clean:
         print("Cleaning output directories...")
         # Clean images
-        img_files = glob.glob('output_img/*.png')
+        img_files = glob.glob("output_img/*.png")
         img_count = 0
         for f in img_files:
             try:
@@ -253,7 +302,7 @@ def main():
         print(f"Removed {img_count} .png file(s) from output_img/.")
 
         # Clean text reports
-        txt_files = glob.glob('output_txt/*.txt')
+        txt_files = glob.glob("output_txt/*.txt")
         txt_count = 0
         for f in txt_files:
             try:
@@ -264,7 +313,7 @@ def main():
         print(f"Removed {txt_count} .txt file(s) from output_txt/.")
 
         # Clean data files
-        csv_files = glob.glob('output_data/*.csv')
+        csv_files = glob.glob("output_data/*.csv")
         csv_count = 0
         for f in csv_files:
             try:
@@ -280,7 +329,7 @@ def main():
 
     if args.start_date and args.end_date:
         # --- 模式 1：絕對日期 (Absolute Date Mode) ---
-        print(f"模式：使用絕對日期區間 (Mode: Using absolute date range)")
+        print("模式：使用絕對日期區間 (Mode: Using absolute date range)")
         analysis_start_date = pd.Timestamp(args.start_date)
         analysis_end_date = pd.Timestamp(args.end_date)
 
@@ -303,11 +352,13 @@ def main():
         period_log_str = args.period
 
     # 定義報告檔案路徑 (Define report file path) with base hours
-    summary_filename = f"output_txt/summary_report_{args.base_hours}_{args.prepost_short}.txt"
+    summary_filename = (
+        f"output_txt/summary_report_{args.base_hours}_{args.prepost_short}.txt"
+    )
 
     # 在迴圈開始前，清空檔案並寫入標頭 (Before the loop, clear the file and write the header)
     try:
-        with open(summary_filename, 'w', encoding='utf-8') as f:
+        with open(summary_filename, "w", encoding="utf-8") as f:
             f.write("Stock Dynamic Analysis Report\n")
             f.write("=============================\n")
         print(f"Summary report will be saved to {summary_filename}")
@@ -317,34 +368,48 @@ def main():
         # Optionally, decide if you want to exit the script on this error
         return
 
-
     # Import configurations
     from src.stock_analysis.config import INTERVAL_LONG
 
     # --- Ticker Configuration ---
     # Check if the --tickers argument is provided. If so, override the config.
     if args.tickers:
-        print(f"模式：使用命令行提供的 Tickers (Mode: Using tickers from command line): {args.tickers}")
+        print(
+            f"模式：使用命令行提供的 Tickers (Mode: Using tickers from command line): {args.tickers}"
+        )
         TICKER_SYMBOLS = args.tickers
-        TICKER_LIST_ARRAY = [args.tickers]  # Analyze all provided tickers as a single group
+        TICKER_LIST_ARRAY = [
+            args.tickers
+        ]  # Analyze all provided tickers as a single group
     else:
         print("模式：使用設定檔中的 Tickers (Mode: Using tickers from config file)")
         from src.stock_analysis.config import TICKER_SYMBOLS, TICKER_LIST_ARRAY
 
-
     # Use the global TICKER_SYMBOLS for the download
     data_short, data_long = download_stock_data(
-        TICKER_SYMBOLS, args.interval_short, INTERVAL_LONG, start_date, end_date, period_log_str, args
+        TICKER_SYMBOLS,
+        args.interval_short,
+        INTERVAL_LONG,
+        start_date,
+        end_date,
+        period_log_str,
+        args,
     )
 
     if args.strategy_backtest:
         run_backtest_mode(TICKER_LIST_ARRAY, data_short, args)
     else:
         all_data, all_results = run_analysis_loops(
-            TICKER_LIST_ARRAY, data_short, data_long, args, summary_filename, args.interval_short
+            TICKER_LIST_ARRAY,
+            data_short,
+            data_long,
+            args,
+            summary_filename,
+            args.interval_short,
         )
 
     print("\n======= 程式執行完畢 (Process Finished) =======")
+
 
 # --- 執行主程式 (Run Main Program) ---
 if __name__ == "__main__":
