@@ -28,3 +28,7 @@ The primary goals for the ongoing development of this project are:
 
 *   **Modularity**: Maintain and improve the modularity of the analysis logic. Each module should have a clear and distinct responsibility.
 *   **Flexibility**: Increase the application's flexibility by adding command-line parameters for user-configurable settings, which helps reduce the need for hard-coding changes directly in `.py` files.
+
+## 4. Development Workflow
+
+*   **Linting**: Before committing any changes, please run the linter to ensure code quality and consistency. Run `ruff check . --fix` and `ruff format .` from the project root.
