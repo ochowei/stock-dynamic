@@ -56,6 +56,7 @@ def run_analysis_loops(
     args: argparse.Namespace,
     summary_filename: str,
     interval_short: str,
+    filename_suffix: str,
 ):
     """
     Runs the main analysis loops through all ticker lists and holding periods.
@@ -148,13 +149,13 @@ def run_analysis_loops(
                         args.plot_on_profit and analysis_results["expected_return"] > 0
                     ):
                         print_results(analysis_results)
-                        plot_results(analysis_results, detailed_df)
+                        plot_results(analysis_results, detailed_df, filename_suffix=filename_suffix)
 
             print(f"\n======= {ticker_symbol} 分析結束 (Analysis Complete) =======")
 
         generate_summary_reports(all_summary_results_master, summary_filename)
 
-        generate_comparison_plots(all_analysis_data_master, ticker_list, "output_img")
+        generate_comparison_plots(all_analysis_data_master, ticker_list, "output_img", filename_suffix)
 
     return all_analysis_data_master, all_summary_results_master
 
@@ -199,7 +200,7 @@ def generate_summary_reports(all_summary_results_grouped: dict, summary_filename
 
 
 def generate_comparison_plots(
-    all_analysis_data: dict, ticker_list: list, output_folder: str
+    all_analysis_data: dict, ticker_list: list, output_folder: str, filename_suffix: str
 ):
     """
     Generates comparison plot charts for each holding period.
@@ -221,6 +222,7 @@ def generate_comparison_plots(
                     holding_hours=holding_hours,
                     tickers_to_plot=tickers_to_plot,
                     output_folder=output_folder,
+                    filename_suffix=filename_suffix,
                 )
 
 
@@ -351,10 +353,17 @@ def main():
         # 用於日誌記錄的週期字串
         period_log_str = args.period
 
+    # --- 建立檔名後綴 (Create Filename Suffix) ---
+    if args.start_date and args.end_date:
+        period_str = f"{args.start_date}_to_{args.end_date}"
+    else:
+        period_str = f"period-{args.period}"
+
+    filename_suffix = f"_{args.interval_short}_anchor-{args.time_anchor}_{period_str}"
+    # --- 檔名後綴建立完畢 ---
+
     # 定義報告檔案路徑 (Define report file path) with base hours
-    summary_filename = (
-        f"output_txt/summary_report_{args.base_hours}_{args.prepost_short}.txt"
-    )
+    summary_filename = f"output_txt/summary_base-{args.base_hours}_iter-{args.iterations}{filename_suffix}.txt"
 
     # 在迴圈開始前，清空檔案並寫入標頭 (Before the loop, clear the file and write the header)
     try:
@@ -428,6 +437,7 @@ def main():
             args,
             summary_filename,
             args.interval_short,
+            filename_suffix,
         )
 
     print("\n======= 程式執行完畢 (Process Finished) =======")
