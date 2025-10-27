@@ -319,7 +319,18 @@ def main():
 
 
     # Import configurations
-    from src.stock_analysis.config import TICKER_SYMBOLS, TICKER_LIST_ARRAY, INTERVAL_LONG
+    from src.stock_analysis.config import INTERVAL_LONG
+
+    # --- Ticker Configuration ---
+    # Check if the --tickers argument is provided. If so, override the config.
+    if args.tickers:
+        print(f"模式：使用命令行提供的 Tickers (Mode: Using tickers from command line): {args.tickers}")
+        TICKER_SYMBOLS = args.tickers
+        TICKER_LIST_ARRAY = [args.tickers]  # Analyze all provided tickers as a single group
+    else:
+        print("模式：使用設定檔中的 Tickers (Mode: Using tickers from config file)")
+        from src.stock_analysis.config import TICKER_SYMBOLS, TICKER_LIST_ARRAY
+
 
     # Use the global TICKER_SYMBOLS for the download
     data_short, data_long = download_stock_data(
