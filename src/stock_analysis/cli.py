@@ -87,6 +87,11 @@ def setup_arg_parser():
         choices=["start", "end"],
         help="Set the time anchor for analysis: 'start' (X-axis is buy time) or 'end' (X-axis is sell time).",
     )
+    parser.add_argument(
+        "--download-only",
+        action="store_true",
+        help="僅下載資料，不執行分析 (Only download data without running analysis).",
+    )
 
     # --- Strategy Backtest Arguments ---
     parser.add_argument(

@@ -396,7 +396,29 @@ def main():
         args,
     )
 
-    if args.strategy_backtest:
+    # --- Download Only Mode ---
+    if args.download_only:
+        if args.save_data:
+            print("--- 儲存已下載的資料 (Saving downloaded data) ---")
+            for ticker in TICKER_SYMBOLS:
+                # Save short interval data
+                df_short = data_short.get(ticker)
+                if df_short is not None and not df_short.empty:
+                    filename_short = f"output_data/{ticker}_{args.interval_short}_raw.csv"
+                    df_short.to_csv(filename_short)
+                    print(f"  - Saved short-interval data for {ticker} to {filename_short}")
+
+                # Save long interval data
+                df_long = data_long.get(ticker)
+                if df_long is not None and not df_long.empty:
+                    filename_long = f"output_data/{ticker}_{INTERVAL_LONG}_raw.csv"
+                    df_long.to_csv(filename_long)
+                    print(f"  - Saved long-interval data for {ticker} to {filename_long}")
+
+        print("\n資料下載完成，已根據 --download-only 指令跳過分析。")
+        print("Data download complete. Skipping analysis as per --download-only flag.")
+
+    elif args.strategy_backtest:
         run_backtest_mode(TICKER_LIST_ARRAY, data_short, args)
     else:
         all_data, all_results = run_analysis_loops(
