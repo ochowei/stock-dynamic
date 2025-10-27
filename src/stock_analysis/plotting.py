@@ -5,7 +5,10 @@ import numpy as np
 
 
 def plot_results(
-    results: dict, analysis_df: pd.DataFrame, output_folder: str = "output_img"
+    results: dict,
+    analysis_df: pd.DataFrame,
+    output_folder: str = "output_img",
+    filename_suffix: str = "",
 ):
     """
     將分析結果視覺化 (全英文圖表)
@@ -64,7 +67,9 @@ def plot_results(
 
     plt.tight_layout()
 
-    plot_filename = f"{output_folder}/{results['ticker']}_{holding_hours}hr.png"
+    plot_filename = (
+        f"{output_folder}/{results['ticker']}_{holding_hours}hr{filename_suffix}.png"
+    )
     plt.savefig(plot_filename)
     print(f"Plot saved as {plot_filename}")
     plt.close()
@@ -72,7 +77,11 @@ def plot_results(
 
 
 def plot_comparison_chart(
-    data_map: dict, holding_hours: float, tickers_to_plot: list, output_folder: str
+    data_map: dict,
+    holding_hours: float,
+    tickers_to_plot: list,
+    output_folder: str,
+    filename_suffix: str = "",
 ):
     """
     繪製多支股票在同一個持有週期下的報酬率比較圖。
@@ -162,7 +171,7 @@ def plot_comparison_chart(
 
     # 儲存圖表
     safe_tickers_str = "_".join(tickers_to_plot)
-    plot_filename = f"{output_folder}/COMP_{safe_tickers_str}_{holding_hours}hr.png"
+    plot_filename = f"{output_folder}/COMP_{safe_tickers_str}_{holding_hours}hr{filename_suffix}.png"
     plt.savefig(plot_filename)
     print(f"Comparison chart saved as {plot_filename}")
     plt.close()
